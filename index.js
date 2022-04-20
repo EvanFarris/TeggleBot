@@ -3,6 +3,7 @@ require('dotenv').config()
 const fs = require('node:fs');
 const { Client, Collection, Intents } = require('discord.js');
 const { DISCORD_TOKEN: discordToken, TWITCH_TOKEN: twitchToken } = process.env;
+const Sequelize = require('sequelize');
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS]});
 client.commands = new Collection();
@@ -24,7 +25,44 @@ for(const file of eventFiles) {
 	}
 }
 
-client.login(discordToken);
+const sequelize = new Sequelize('database','user', 'password', {
+	host: 'localhost',
+	dialect: 'sqlite',
+	logging: false,
+	storage: 'database.sqlite',
+});
 
-//console.log(`Discord token: ${discordToken}`);
-//console.log(`Twitch token: ${twitchToken}`);
+const GUILD_SUBS = sequelize.define('guild_subs', {
+	guildID: {
+		type: Sequelize.STRING,
+		unique: true,
+	},
+	streamers: Sequelize.TEXT,
+	numStreamers: {
+		type: Sequelize.INTEGER,
+		defaultValue: 0,
+		allowNull: false,
+	},
+});
+
+client.dbs = sequelize;
+client.dbs.guildsubs = GUILD_SUBS;
+/*
+const STREAMERS_TO_CHANNELS = sequelize.define('streamers_to_channels', {
+	guildID: {
+		type: Sequelize.STRING,
+		unique: true,
+	},
+	channels: Sequelize.TEXT,
+});
+
+const STREAMERS_INFO = sequelize.define('streamers_info', {
+	streamers_info: {
+		type: Sequelize.STRING,
+		unique: true,
+	},
+	streamers: Sequelize.TEXT,
+});
+*/
+
+client.login(discordToken);

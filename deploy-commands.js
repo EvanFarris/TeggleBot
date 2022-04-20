@@ -18,9 +18,9 @@ const rest = new REST({ version: '9' }).setToken(discordToken);
 
 (async () => {
 	try {
-		console.log('Started refreshing application (/) commands.');
-
+		console.log('Refreshing application (/) commands...');
 		await rest.put(Routes.applicationGuildCommands(clientID,guildID), {body: commands},);
+		console.log('Refresh completed.');
 
 	} catch (error) {
 		console.error(error);
