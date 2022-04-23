@@ -13,6 +13,9 @@
   "dependencies": {
     "@discordjs/builders": "^0.13.0",
     "@discordjs/rest": "^0.4.1",
+    "@twurple/api": "^5.1.1",
+    "@twurple/auth": "^5.1.1",
+    "@twurple/eventsub": "^5.1.1",
     "discord-api-types": "^0.31.1",
     "discord.js": "^13.6.0",
     "dotenv": "^16.0.0",

@@ -6,9 +6,9 @@ const { DISCORD_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CL
 
 const Sequelize = require('sequelize');
 
-const { ApiClient } = require('twitch');
-const { ClientCredentialsAuthProvider } = require('twitch-auth');
-const { DirectConnectionAdapter, EventSubListener } = require('twitch-eventsub');
+const { ApiClient } = require('@twurple/api');
+const { ClientCredentialsAuthProvider } = require('@twurple/auth');
+const { DirectConnectionAdapter, EventSubListener } = require('@twurple/eventsub');
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS]});
 client.commands = new Collection();
@@ -94,7 +94,7 @@ const twitchListener = new EventSubListener(apiClient, new DirectConnectionAdapt
 	}
 }), `${listenerString}`);
 
-client.twitchListener = twitchListener;
+client.twitchlistener = twitchListener;
 
 twitchListener.listen();
 client.login(discordToken);
