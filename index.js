@@ -1,4 +1,4 @@
-require('dotenv').config()
+require('dotenv').config();
 
 const fs = require('node:fs');
 const { Client, Collection, Intents } = require('discord.js');
@@ -9,6 +9,8 @@ const Sequelize = require('sequelize');
 const { ApiClient } = require('@twurple/api');
 const { ClientCredentialsAuthProvider } = require('@twurple/auth');
 const { DirectConnectionAdapter, EventSubListener } = require('@twurple/eventsub');
+
+const { NgrokAdapter } = require('@twurple/eventsub-ngrok');
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS]});
 client.commands = new Collection();
@@ -86,13 +88,16 @@ const authProvider = new ClientCredentialsAuthProvider(twitchClientId, twitchCli
 const apiClient = new ApiClient({ authProvider });
 client.twitchAPI = apiClient;
 
-const twitchListener = new EventSubListener(apiClient, new DirectConnectionAdapter({
+const adapter = new DirectConnectionAdapter({
 	hostName: `localhost`,
 	sslCert: {
 		key: fs.readFileSync("./localhost.decrypted.key", `utf-8`),
 		cert: fs.readFileSync("./localhost.crt",`utf-8`)
 	}
-}), `${listenerString}`);
+});
+let secret = listenerString;
+apiClient.eventSub.deleteAllSubscriptions();
+const twitchListener = new EventSubListener({apiClient, adapter: new NgrokAdapter(), secret, strictHostCheck: true});
 
 client.twitchlistener = twitchListener;
 

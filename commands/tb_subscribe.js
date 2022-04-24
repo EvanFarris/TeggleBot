@@ -80,45 +80,47 @@ async function updateTwitchStreamer(interaction, streamer) {
 
 async function twitchEventSubSubscribe(interaction, streamerId) {
 	try{
-		console.log(`twitchEventSubSubscribe called. Streamerid: ${streamerId}`);
 		const onlineSubscription = await interaction.client.twitchlistener.subscribeToStreamOnlineEvents(streamerId, streamer => {
-			try {
-				console.log("OnlineSubscription called.");
-				let dbEntry = interaction.client.dbs.twitchstreamers.findOne({ where: { username: `${streamer.broadcasterDisplayName.toLowerCase()}`}});
-				let jsonParsed = JSON.parse(dbEntry.get('followers')).followers;
-				let newDate = `${streamer.startDate}`;
-				const updatedRows = interaction.client.dbs.twitchstreamers.update({lastOnline: `${newDate}`}, {where: {username: `${streamer.broadcasterDisplayName.toLowerCase()}`}});
-				for( follower in jsonParsed ) {
-					interaction.client.channels.cache.get(`${follower}`).send(`${streamer.broadcasterDisplayName} is now live!`);
-				}
-			} catch (error2) {
-				console.log(`Error when notifying servers that a streamer went live.\n${error2}`);
-			}
+			streamerNotification(interaction, streamerId, streamer, true);
 		});
 
 		const offlineSubscription = await interaction.client.twitchlistener.subscribeToStreamOfflineEvents(streamerId, streamer => {
-			try {
-				console.log("OfflineSubscription called.");
-				let dbEntry = interaction.client.dbs.twitchstreamers.findOne({ where: { username: `${streamer.broadcasterDisplayName.toLowerCase()}`}});
-				let jsonParsed = JSON.parse(dbEntry.get('followers')).followers;
-				let newDate = `${streamer.startDate}`;
-				const updatedRows = interaction.client.dbs.twitchstreamers.update({lastOnline: `${newDate.getTime()}`}, {where: {username: `${streamer.broadcasterDisplayName.toLowerCase()}`}});
-			} catch (error2) {
-				console.log(`Error when notifying servers that a streamer went offline.\n${error2}`);
-			}
+			streamerNotification(interaction, streamerId, streamer, false);
 		});
-		console.log(`${typeof(onlineSubscription)} ${typeof(offlineSubscripition)}`);
+
 	} catch (error1) {
 		console.log(`Error setting up a subscription.\n${error1}`);
 	}
 	
 }
 
-function twitchEventSubUnsubscribe(interaction, streamerId) {
 
+async function streamerNotification(interaction, streamerId, streamer, isLiveNotification) {
+	try {
+			const time = new Date();
+			let dbEntry = await interaction.client.dbs.twitchstreamers.findOne({ where: { username: `${streamer.broadcasterDisplayName.toLowerCase()}`}});
+			if(dbEntry) {
+				let jsonParsed = JSON.parse(dbEntry.get('followers')).followers;
+				let newDate = `${time.getTime()}`;
+				const updatedRows = await interaction.client.dbs.twitchstreamers.update({lastOnline: `${newDate}`}, {where: {username: `${streamer.broadcasterDisplayName.toLowerCase()}`}});
+				let msg;
+
+				if(isLiveNotification) {msg = `${streamer.broadcasterDisplayName} is now live!`;}
+				else {msg = `${streamer.broadcasterDisplayName} went offline!`;}
+
+				let channel;
+				for( i = 0; i < jsonParsed.length; i++ ) {
+					channel = await interaction.client.channels.cache.get(`${jsonParsed[i]}`);
+					channel.send(msg);
+				}
+			} else {
+				console.log("Streamer not found");
+			}
+			
+	} catch (error2) {
+			console.log(`Error when notifying servers that a streamer went live.\n${error2}`);
+	}
 }
-
-
 
 module.exports = {
 	data: new SlashCommandBuilder()
