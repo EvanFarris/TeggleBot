@@ -96,6 +96,7 @@ const adapter = new DirectConnectionAdapter({
 	}
 });
 let secret = listenerString;
+//required for ngrok
 apiClient.eventSub.deleteAllSubscriptions();
 const twitchListener = new EventSubListener({apiClient, adapter: new NgrokAdapter(), secret, strictHostCheck: true});
 

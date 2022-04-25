@@ -1,4 +1,79 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
+const { MessageEmbed } = require('discord.js');
+const maxSubscribedTo = 5;
+const embeddedTitle = `TeggleBot Subscribe Results`;
+module.exports = {
+	data: new SlashCommandBuilder()
+		.setName('tb_subscribe')
+		.setDescription('Subscribe to a streamer.')
+		.addStringOption(option =>
+			option.setName('url')
+			.setDescription('The url to the streamer you want to subscribe to.')
+			.setRequired(true)),
+	async execute(interaction) {
+		if(interaction.memberPermissions.has(`ADMINISTRATOR`) || interaction.memberPermissions.has('MANAGE_WEBHOOKS')) { 
+			if(interaction.isCommand()) {
+				let msg = interaction.options.getString('url');
+				let { website, username } = checkUrl(msg);
+
+				//Check if we have a valid website/username combo.
+
+				if(website === "") {
+					let description = 'Invalid url entered.';
+					return interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});;
+				} else if(username == "") {
+					let description = "Username must not be empty.";
+					return interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});
+				} else if(website == "twitch" && !isValidTwitchUsername(username)){
+					let description = "Invalid username entered.";
+					return interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});
+				}
+			
+				const gs_tableEntry = await getGuildSubsTableEntry(interaction);
+				//Check to see if the guild is subscribed to anyone. 
+				//If they are, make sure the streamer to be added isn't already subscribed to in the local database already.
+				//Also, the guild must have room to subscribe to continue.
+				if(gs_tableEntry && ((await checkIfStreamerIsInGuildSubsAlready(interaction, gs_tableEntry, username, website)) || !(await checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry)))) { return; }
+				const { streamer, streamerId } = await validateUserExists(interaction, username, website);
+
+				//Update TWITCH_STREAMERS table
+				if(website == "twitch" && streamer != null) {
+						updateTwitchStreamer(interaction, streamer);
+				} else if(website == "twitch" && streamerId != "" && streamerId != "!error") {
+						createTwitchStreamer(interaction, username, streamerId);
+				} else if(website == "youtube") {
+
+				} else { //Something went wrong, end the function.
+					return;
+				}
+
+				//Update GUILD_SUBS table
+				let succeeded;
+				if(gs_tableEntry != null) {
+					succeeded = await updateGuildSubs(interaction, gs_tableEntry, username, website);					
+				} else {
+					succeeded = await createGuildSubs(interaction, username, website);
+				} 
+
+				if(succeeded == 1) {
+					const usernameFixed = username.charAt(0).toUpperCase() + username.slice(1);
+					const description = `You have successfully subscribed to ${usernameFixed}`; 
+					
+					await interaction.reply({ embeds: [createEmbeddedMessage(embeddedTitle, description)]});
+				}
+
+
+			} else if (interactin.isButton()) {
+
+			}
+
+		} else {
+			await interation.reply('You must have either the Administrator permission or the Manage Webhooks permission to use this command.');
+		}
+		
+	},
+	
+};
 
 function isValidTwitchUsername(username) {
 	let regex = /[^\w]+/;
@@ -28,8 +103,9 @@ async function checkTwitchStreamerExistsLocal(interaction, username) {
 		if(ts_streamer) {return ts_streamer;} 
 		else {return null;}
 	} catch (error) {
-		console.log(`checkTwitchStreamerExistsLocal error:\n${error}`)
-		interaction.reply(`Error occured while trying to see if a streamer exists locally.`);
+		console.log(`~~~~checkTwitchStreamerExistsLocal~~~~\n${error}\n`)
+		let description = `Error occured while trying to see if a streamer exists locally.`;
+		interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});
 		return null;
 	}
 }
@@ -43,7 +119,7 @@ async function checkTwitchStreamerExistsAPI(client, username) {
 			return "";
 		}
 	} catch (error) {
-		console.log(`Error in response from the twitch API: ${error}`);
+		console.log(`~~~~checkTwitchStreamerExistsAPI~~~~\n${error}\n`);
 		return "!error!";
 	}
 	
@@ -51,31 +127,70 @@ async function checkTwitchStreamerExistsAPI(client, username) {
 
 async function createTwitchStreamer(interaction, username, streamerId) {
 	try {
-			let jsonfollowers = JSON.stringify({ "followers" : [interaction.channelId] });
+			let jsonFollowers = JSON.stringify({ "followers" : [interaction.channelId] });
 			const time = new Date();
 			const dbEntryInserted = await interaction.client.dbs.twitchstreamers.create({
 				username: `${username}`,
 				streamerId: `${streamerId}`,
 				lastOnline: `${time.getTime()}`,
-				followers: `${jsonfollowers}`
+				followers: `${jsonFollowers}`
 				});
 			await twitchEventSubSubscribe(interaction, streamerId);
 
 		} catch(error) {
-			console.log(`Error in createTwitchStreamer\n${error}`);
+			console.log(`~~~~createTwitchStreamer~~~~\n${error}\n`);
 		}
 }
 
 async function updateTwitchStreamer(interaction, streamer) {
 	let streamerParsed = JSON.parse(streamer.get('followers')).followers;
 	streamerParsed.push(`${interaction.channelId}`);
-	let streamerFollowers = JSON.stringify({"followers" : streamerParsed});
+	let streamerStringified = JSON.stringify({"followers" : streamerParsed});
 	
 	try {
-		await interaction.client.dbs.twitchstreamers.update({ "followers": streamerFollowers }, {where: {username: `${streamer.get('username')}`}});
+		await interaction.client.dbs.twitchstreamers.update({ "followers": streamerStringified }, {where: {username: `${streamer.get('username')}`}});
 	} catch (error) {
-		await interaction.reply("Error in \"updateTwitchStreamer function.");
+		let description = "Error in \"updateTwitchStreamer function."
+		console.log(`~~~~updateTwitchStreamer~~~~\n${error}\n`);
+		await interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});
 	}
+}
+
+async function updateGuildSubs(interaction, gs_tableEntry, username, website) {
+	try {
+			let jsonParsed = JSON.parse(gs_tableEntry.get(`streamers`));
+			let jsonNames = jsonParsed.names;
+			let jsonWebsites = jsonParsed.websites;
+			let numSubbed = gs_tableEntry.get(`numStreamers`);
+
+			jsonNames.push(username);
+			jsonWebsites.push(website);
+			numSubbed++;
+			jsonParsed  = JSON.stringify({"names" : jsonNames, "websites" : jsonWebsites });
+						
+			const updatedRows = await interaction.client.dbs.guildsubs.update({streamers: jsonParsed, numStreamers : numSubbed}, {where: {guildID: `${interaction.guildId}`}});
+			return updatedRows;
+
+		} catch (error) {
+			console.log(`~~~~updateGuildSubs~~~~\n${error}`);
+			return -1;
+		}
+}
+
+async function createGuildSubs(interaction, username, website) {
+	try {
+		let jsonStreamers = JSON.stringify({ "names" : [username], "websites" : [website] });
+		const dbEntryInserted = await interaction.client.dbs.guildsubs.create({
+			guildID: `${interaction.guildId}`,
+			streamers: `${jsonStreamers}`,
+			numStreamers: 1,
+		});
+		return 1;
+	} catch(error) {
+		console.log(`~~~~createGuildSubs~~~~\n${error}`);
+		return -1;
+	}
+			
 }
 
 async function twitchEventSubSubscribe(interaction, streamerId) {
@@ -88,8 +203,8 @@ async function twitchEventSubSubscribe(interaction, streamerId) {
 			streamerNotification(interaction, streamerId, streamer, false);
 		});
 
-	} catch (error1) {
-		console.log(`Error setting up a subscription.\n${error1}`);
+	} catch (error) {
+		console.log(`~~~~twitchEventSubSubscribe~~~~\n${error}\n`);
 	}
 	
 }
@@ -117,124 +232,78 @@ async function streamerNotification(interaction, streamerId, streamer, isLiveNot
 				console.log("Streamer not found");
 			}
 			
-	} catch (error2) {
-			console.log(`Error when notifying servers that a streamer went live.\n${error2}`);
+	} catch (error) {
+			console.log(`~~~~streamerNotification~~~~\n${error}\n`);
 	}
 }
 
-module.exports = {
-	data: new SlashCommandBuilder()
-		.setName('tb_subscribe')
-		.setDescription('Subscribe to a streamer.')
-		.addStringOption(option =>
-			option.setName('url')
-			.setDescription('The url to the streamer you want to subscribe to.')
-			.setRequired(true)),
-	async execute(interaction) {
-		if(interaction.memberPermissions.has(`ADMINISTRATOR`) || interaction.memberPermissions.has('MANAGE_WEBHOOKS')) { 
-			
-			let msg = interaction.options.getString('url');
-			let { website, username } = checkUrl(msg);
+async function getGuildSubsTableEntry(interaction) {
+	try {
+		gs_tableEntry = await interaction.client.dbs.guildsubs.findOne({ where: { guildID: `${interaction.guildId}` }});
+		return gs_tableEntry;
+	} catch (error) {
+		console.log(`~~~~getGuildSubsTableEntry~~~~\n${error}\n`);
+		let description = `Error occured while trying to subscribe.\n`;
+		interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});
+		return null;
+	}
+}
 
-			//Check if we have a valid website/username combo.
-			if(website === "") {
-				return interaction.reply('Invalid url entered.');;
-			} else if(username == "") {
-				return interaction.reply("Username must not be empty.");
-			} else if(website == "twitch" && !isValidTwitchUsername(username)){
-				return interaction.reply("Invalid username entered.");
-			}
-
-			let gs_tableEntry = null;
-			try {
-				gs_tableEntry = await interaction.client.dbs.guildsubs.findOne({ where: { guildID: `${interaction.guildId}` }});
-			} catch (error) {
-				return interaction.reply(`Error occured while trying to subscribe.\n${error}`);
-			}
-
-			let jsonParsed = null;
-			let jsonNames = null;
-			let jsonWebsites = null;
-			let numSubbed = null;
-			if(gs_tableEntry) { //If there is an entry in GUILD_SUBS, retrieve it, check if they have < 5 subscribed users, 
-				numSubbed = gs_tableEntry.get(`numStreamers`);
-				if(numSubbed < 5) {
-					jsonParsed = JSON.parse(gs_tableEntry.get(`streamers`));
-					jsonNames = jsonParsed.names;
-					jsonWebsites = jsonParsed.websites;
-					
-					//If they are already subscribed to the user, do not continue. 
-					for(i = 0; i < jsonNames.length; i++) {
-						if (jsonNames[i] == username && jsonWebsites[i] == website) {
-							return interaction.reply(`${username} has already been subscribed to.`);
-						}
-					}
-
-				} else {
-					return interaction.reply('You can only have up to 5 streamers subscribed at a time.');
-				}
-				
-			} 
-
-			//Call the correct api to see if the user is real, update/create streamer if they exist.
-			let response;
-			let streamerID;
-			let streamer;
-			if(website == "twitch") {
-				//check local database
-				streamer = await checkTwitchStreamerExistsLocal(interaction, username);
-				if(streamer == null){ //We don't have the streamer in TWITCH_STREAMERS
-					streamerID = await checkTwitchStreamerExistsAPI(interaction.client, username);
-					if(streamerID != "" && streamerID != "!error!") {
-						createTwitchStreamer(interaction, username, streamerID);
-					} else {
-						return interaction.reply('User does not exist.');
-					}
-							
-				} else { //We do have the streamer in TWITCH_STREAMERS
-						updateTwitchStreamer(interaction, streamer);
-					}
-
-			} else if(website == "youtube") {
-						//TODO: Youtube implementation
-				}
-			//Update GUILD_SUBS
-			if(gs_tableEntry) {
-				try {
-					jsonNames.push(username);
-					jsonWebsites.push(website);
-					numSubbed++;
-					jsonParsed  = JSON.stringify({"names" : jsonNames, "websites" : jsonWebsites });
-						
-					const updatedRows = await interaction.client.dbs.guildsubs.update({streamers: jsonParsed, numStreamers : numSubbed}, {where: {guildID: `${interaction.guildId}`}});
-					if(updatedRows > 0) {
-						return interaction.reply(`You have successfully subscribed to: ${username} on ${website}`);
-					} else {
-						return interaction.reply('Something went wrong inserting an entry into an existing subscription list.');
-					}
-
-				} catch (error) {
-					await interaction.reply(`Something went wrong updating the database entry.`);
-				}
-			} else {
-				//Create new entry in GUILD_SUBS
-				try {
-					let jsonTEST = JSON.stringify({ "names" : [username], "websites" : [website] });
-					const dbEntryInserted = await interaction.client.dbs.guildsubs.create({
-						guildID: `${interaction.guildId}`,
-						streamers: `${jsonTEST}`,
-						numStreamers: 1,
-					});
-					await interaction.reply(`You have successfully subscribed to: ${username} on ${website}`);
-				} catch(error) {
-					await interaction.reply('Something went wrong while creating the entry for the first subscription in the database.');
-				}
-			}
-
-		} else {
-			await interation.reply('You must have either the Administrator permission or the Manage Webhooks permission to use this command.');
-		}
-		
-	},
+async function checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry) {
+	let numSubbed = gs_tableEntry.get(`numStreamers`);
 	
-};
+	if(numSubbed >= maxSubscribedTo) {
+		let description = 'You can only have up to 5 streamers subscribed at a time.'
+		await interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});
+		return false;
+	}
+
+	return true;
+}
+
+async function checkIfStreamerIsInGuildSubsAlready(interaction, gs_tableEntry, username, website) {
+	let jsonParsed = JSON.parse(gs_tableEntry.get(`streamers`));
+	let jsonNames = jsonParsed.names;
+	let jsonWebsites = jsonParsed.websites;
+				
+	//If they are already subscribed to the user, do not continue. 
+	for(i = 0; i < jsonNames.length; i++) {
+		if (jsonNames[i] == username && jsonWebsites[i] == website) {
+			let description = `${username} has already been subscribed to.`;
+			await interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});
+			return true;
+		}
+	}
+
+	return false;		
+}
+
+async function validateUserExists(interaction, username, website) {
+	//Call the correct api to see if the user is real.
+	let streamerId = null;
+	let streamer = null;
+	if(website == "twitch") {
+		//check local database
+		streamer = await checkTwitchStreamerExistsLocal(interaction, username);
+		if(streamer == null){ //We don't have the streamer in TWITCH_STREAMERS
+			streamerId = await checkTwitchStreamerExistsAPI(interaction.client, username);
+			if(streamerId == "" || streamerId == "!error!") {
+				let description = 'User does not exist.';
+				interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});
+			}				
+		}
+
+		return { streamer, streamerId };
+	} else if(website == "youtube") {
+		//TODO: Youtube implementation
+		return { streamer, streamerId };
+	}
+}
+
+function createEmbeddedMessage(title, description) {
+	const embeddedMessage = new MessageEmbed()
+		.setColor(`#09f`)
+		.setTitle(title)
+		.setDescription(description);
+	return embeddedMessage;
+}
