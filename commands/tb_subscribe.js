@@ -1,7 +1,9 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { MessageEmbed } = require('discord.js');
+const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
+const wait = require(`node:timers/promises`).setTimeout;
 const maxSubscribedTo = 5;
 const embeddedTitle = `TeggleBot Subscribe Results`;
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('tb_subscribe')
@@ -36,11 +38,43 @@ module.exports = {
 				if(gs_tableEntry && ((await checkIfStreamerIsInGuildSubsAlready(interaction, gs_tableEntry, username, website)) || !(await checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry)))) { return; }
 				const { streamer, streamerId } = await validateUserExists(interaction, username, website);
 
+				const actionRow = new MessageActionRow()
+					.addComponents(
+							new MessageButton()
+								.setCustomId('tb_subscribe_yes')
+								.setLabel(`Yes (Subscribe)`)
+								.setStyle(`PRIMARY`),
+							new MessageButton()
+								.setCustomId(`tb_subscribe_no`)
+								.setLabel(`No`)
+								.setStyle(`SECONDARY`),
+						);
+				let replyEmbedded = await createEmbeddedMessageComplicated(username, website, interaction.client.twitchAPI);
+				await interaction.reply({ ephemeral: true, embeds: [replyEmbedded], components: [actionRow] })
+					.then(() => {
+						setTimeout(function() {
+						actionRow.components[0].setDisabled(true);
+						actionRow.components[1].setDisabled(true);
+						interaction.editReply({ephemeral: true, embeds: [replyEmbedded], components: [actionRow]});
+						},8000)
+					});
+
+				const filter = i => i.customId == "tb_subscribe_yes" || i.customId == "tb_subscribe_no";
+				const collector = interaction.channel.createMessageComponentCollector({ filter, time: 8000 });
+				collector.on(`collect`, async i => {
+					actionRow.components[0].setDisabled(true);
+					actionRow.components[1].setDisabled(true);
+					interaction.editReply({ephemeral: true, embeds: [replyEmbedded], components: [actionRow]});
+				});
+
+
+			} else if (interaction.isButton() && interaction.customId == "tb_subscribe_yes") {
 				//Update TWITCH_STREAMERS table
+				let { username, website, streamerId, streamer, gs_tableEntry } = await getFromEmbedded(interaction);
 				if(website == "twitch" && streamer != null) {
-						updateTwitchStreamer(interaction, streamer);
+						await updateTwitchStreamer(interaction, streamer);
 				} else if(website == "twitch" && streamerId != "" && streamerId != "!error") {
-						createTwitchStreamer(interaction, username, streamerId);
+						await createTwitchStreamer(interaction, username, streamerId);
 				} else if(website == "youtube") {
 
 				} else { //Something went wrong, end the function.
@@ -61,10 +95,6 @@ module.exports = {
 					
 					await interaction.reply({ embeds: [createEmbeddedMessage(embeddedTitle, description)]});
 				}
-
-
-			} else if (interactin.isButton()) {
-
 			}
 
 		} else {
@@ -112,7 +142,7 @@ async function checkTwitchStreamerExistsLocal(interaction, username) {
 
 async function checkTwitchStreamerExistsAPI(client, username) {
 	try {
-		const user = await client.twitchAPI.helix.users.getUserByName(`${username}`);
+		const user = await client.twitchAPI.users.getUserByName(`${username}`);
 		if(user) {
 			return user.id;
 		} else {
@@ -306,4 +336,31 @@ function createEmbeddedMessage(title, description) {
 		.setTitle(title)
 		.setDescription(description);
 	return embeddedMessage;
+}
+
+async function createEmbeddedMessageComplicated(username, website, twitchAPI) {
+	const embeddedMessage = new MessageEmbed()
+		.setColor(`#0099ff`)
+		.setTitle(`Retrieved ${username} from the ${website} API`)
+		.setDescription(`Is this the correct streamer?`);
+
+	if(website == "twitch") {
+		let streamerObject = await twitchAPI.users.getUserByName(username);
+		embeddedMessage.setTitle(`Is this the correct streamer?`)
+			.setImage(streamerObject.profilePictureUrl)
+			.setURL(`https://twitch.tv/${username}`)
+			.setDescription(streamerObject.description);
+	} else if (website == "youtube") {
+
+	}
+
+	return embeddedMessage;
+}
+
+async function getFromEmbedded(interaction) {
+	let { website, username } = checkUrl(interaction.message.embeds[0].url);
+	let gs_tableEntry = await getGuildSubsTableEntry(interaction);
+	const { streamer, streamerId } = await validateUserExists(interaction, username, website);
+
+	return { username, website, streamerId, streamer, gs_tableEntry };
 }
