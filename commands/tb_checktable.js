@@ -1,5 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-
+/*
+	This module allows me to query the two database tables - TWITCH_STREAMERS and GUILD_SUBS in the discord channel.
+	This should not be available to any public discord, and it arguably can be replaced by a database reader.
+*/
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('tb_checktable')
@@ -22,21 +25,18 @@ module.exports = {
 			}
 
 			if(rows.length > 0){
-				//console.log(`Stringify: ${JSON.stringify(rows,null,2)}`);
 				let obj;
 				let numFollowers;
 				if(table_name == "TWITCH_STREAMERS") {
 					for(i = 0; i < rows.length; i++) {
 						obj = rows.at(i);
 						numFollowers = JSON.parse(obj.get("followers")).followers;
-						//console.log(`numFollowers: ${numFollowers} numFollowers type: ${typeof(numFollowers)}`);
 						result += `Username: ${obj.get("username")}\nStreamer id: ${obj.get("streamerId")}\nLast online: ${obj.get("lastOnline")}\nNumber of Followers: ${numFollowers.length}\n\n`;
 					}
 				} else if(table_name == "GUILD_SUBS") {
 
 					for(i = 0; i < rows.length; i++) {
 						obj = rows.at(i);
-						//console.log(`${obj.get("guildID")}`);
 						result += `Guild Id: ${obj.get("guildID")}\nNumber of streamers followed: ${obj.get("numStreamers")}\n`;
 					}
 				}
