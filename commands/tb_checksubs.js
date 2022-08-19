@@ -1,12 +1,11 @@
-const { SlashCommandBuilder } = require('@discordjs/builders');
-const { MessageEmbed } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 /*
 	This module returns an embedded message of all the streamers that a guild is subscribed to, and which websites they stream on.
 */
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('tb_checksubs')
-		.setDescription('Check what streamers you are subscribed to.'),
+		.setDescription('Check what streamers your guild is subscribed to.'),
 	async execute(interaction) { 
 		try {
 			let guildName = interaction.guild.name;
@@ -42,7 +41,7 @@ module.exports = {
 };
 
 function createEmbed(guildName, numStreamers, guildIcon, twitchSubs, youtubeSubs) {
-	const embeddedMessage = new MessageEmbed()
+	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#0099ff`)
 		.setTitle(`Streamers that ${guildName} is subscribed to (/tb_checksubs)`)
 		.setDescription(`You are subscribed to ${numStreamers} streamers.`);
@@ -56,11 +55,11 @@ function createEmbed(guildName, numStreamers, guildIcon, twitchSubs, youtubeSubs
 		}
 
 		if(twitchSubs.length > 0) {
-			embeddedMessage.addField(`Twitch.tv`, twitchSubs , true);
+			embeddedMessage.addFields({name: `Twitch.tv`, value: twitchSubs});
 		}
 
 		if(youtubeSubs.length > 0) {
-			embeddedMessage.addField(`Youtube`, youtubeSubs , true);
+			embeddedMessage.addFields({name: `Youtube`, value: youtubeSubs});
 		}
 
 		return embeddedMessage;

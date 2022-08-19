@@ -1,18 +1,18 @@
 require('dotenv').config();
 
 const fs = require('node:fs');
-const { Client, Collection, Intents } = require('discord.js');
+const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const { DISCORD_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString } = process.env;
 
 const Sequelize = require('sequelize');
 
 const { ApiClient } = require('@twurple/api');
 const { ClientCredentialsAuthProvider } = require('@twurple/auth');
-const { DirectConnectionAdapter, EventSubListener } = require('@twurple/eventsub');
+const { DirectConnectionAdapter, EventSubListener, ReverseProxyAdapter } = require('@twurple/eventsub');
 
 const { NgrokAdapter } = require('@twurple/eventsub-ngrok');
 
-const client = new Client({ intents: [Intents.FLAGS.GUILDS]});
+const client = new Client({ intents: [GatewayIntentBits.Guilds]});
 client.commands = new Collection();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
@@ -56,8 +56,6 @@ const GUILD_SUBS = sequelize.define('guild_subs', {
 	},
 });
 
-
-
 const TWITCH_STREAMERS = sequelize.define('twitch_streamers', {
 	username: {
 		type: Sequelize.STRING,
@@ -68,38 +66,33 @@ const TWITCH_STREAMERS = sequelize.define('twitch_streamers', {
 	followers: Sequelize.TEXT,	//JSON guild channelids to send out livestream notifications.
 });
 
-/*
-const STREAMERS_INFO = sequelize.define('streamers_info', {
-	streamers_info: {
-		type: Sequelize.STRING,
-		unique: true,
-	},
-	streamers: Sequelize.TEXT,
-});
-*/
 //Attach the database to the discord client so the discord commands can access the related tables.
 client.dbs = sequelize;
 client.dbs.guildsubs = GUILD_SUBS;
 client.dbs.twitchstreamers = TWITCH_STREAMERS;
 
+//Create map and attach it to client. Initialize it in ready.js
+client.hmap = new Map();
 //Setup the twitch client with auto-refreshing token.
 const authProvider = new ClientCredentialsAuthProvider(twitchClientId, twitchClientSecret);
 
-const apiClient = new ApiClient({ authProvider });
+const apiClient = new ApiClient({ authProvider, logger: {minLevel:'debug'} });
 client.twitchAPI = apiClient;
 
-const adapter = new DirectConnectionAdapter({
-	hostName: `localhost`,
-	sslCert: {
-		key: fs.readFileSync("./localhost.decrypted.key", `utf-8`),
-		cert: fs.readFileSync("./localhost.crt",`utf-8`)
-	}
+
+const RPAdapter = new ReverseProxyAdapter({
+	hostName: `teggle.dev`,
+	pathPrefix: `/tegglebot`,
+	usePathPrefixInHandlers: true,
+	port: 3000
 });
+
 let secret = listenerString;
 //required for ngrok
 apiClient.eventSub.deleteAllSubscriptions();
-const twitchListener = new EventSubListener({apiClient, adapter: new NgrokAdapter(), secret, strictHostCheck: true});
 
+//const twitchListener = new EventSubListener({apiClient, adapter: new NgrokAdapter(), secret, strictHostCheck: true});
+const twitchListener = new EventSubListener({apiClient, adapter: RPAdapter, secret, strictHostCheck: true});
 client.twitchlistener = twitchListener;
 
 twitchListener.listen();

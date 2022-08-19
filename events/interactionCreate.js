@@ -1,3 +1,4 @@
+const {InteractionType} = require('discord.js');
 module.exports = {
 	name: 'interactionCreate',
 	execute(interaction) {
@@ -6,7 +7,7 @@ module.exports = {
 			const command = interaction.client.commands.get(interaction.commandName);
 			if(!command) return;
 			try {
-				if(interaction.isCommand()) {
+				if(interaction.type === InteractionType.ApplicationCommand) {
 					command.execute(interaction);
 				} 
 			
@@ -17,6 +18,8 @@ module.exports = {
 		} else {
 			if(interaction.customId == "tb_subscribe_yes" || interaction.customId == "tb_subscribe_no") {
 				interaction.client.commands.get("tb_subscribe").execute(interaction);
+			} else if (interaction.customId == "tb_unsubscribe_yes" || interaction.customId == "tb_unsubscribe_no") {
+				interaction.client.commands.get("tb_unsubscribe").execute(interaction);
 			}
 		}
 		
