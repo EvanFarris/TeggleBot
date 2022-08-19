@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('@discordjs/builders');
+const { SlashCommandBuilder } = require('discord.js');
 /*
 	This module allows me to query the two database tables - TWITCH_STREAMERS and GUILD_SUBS in the discord channel.
 	This should not be available to any public discord, and it arguably can be replaced by a database reader.
