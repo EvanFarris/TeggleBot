@@ -57,7 +57,7 @@ const GUILD_SUBS = sequelize.define('guild_subs', {
 });
 
 const TWITCH_STREAMERS = sequelize.define('twitch_streamers', {
-	username: {
+	streamerUsername: {
 		type: Sequelize.STRING,
 		unique: true,
 	},
