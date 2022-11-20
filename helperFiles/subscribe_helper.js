@@ -2,8 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder } = require('discord.js');
 const embeddedTitle = `TeggleBot Subscribe Results`;
 module.exports = {
 	createEmbeddedMessage,
-	createEmbeddedMessageComplicated,
-	getGuildSubsTableEntry
+	createEmbeddedMessageComplicated
 }
 
 
@@ -16,19 +15,19 @@ function createEmbeddedMessage(title, description) {
 }
 
 
-async function createEmbeddedMessageComplicated(username, website, twitchAPI) {
+async function createEmbeddedMessageComplicated(streamerUsername, website, twitchAPI) {
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#0099ff`)
-		.setTitle(`Retrieved ${username} from the ${website} API`)
+		.setTitle(`Retrieved ${streamerUsername} from the ${website} API`)
 		.setDescription(`Is this the correct streamer?`);
 
 	if(website == "twitch") {
-		let streamerObject = await twitchAPI.users.getUserByName(username);
+		let streamerObject = await twitchAPI.users.getUserByName(streamerUsername);
 		let channelDescription = streamerObject.description;
 		if(channelDescription == "") {channelDescription = " ";}
-		embeddedMessage.setTitle(`Is this the correct streamer? (${username})`)
+		embeddedMessage.setTitle(`Is this the correct streamer? (${streamerUsername})`)
 			.setImage(streamerObject.profilePictureUrl)
-			.setURL(`https://twitch.tv/${username}`)
+			.setURL(`https://twitch.tv/${streamerUsername}`)
 			.setDescription(channelDescription);
 	} else if (website == "youtube") {
 
@@ -37,15 +36,9 @@ async function createEmbeddedMessageComplicated(username, website, twitchAPI) {
 	return embeddedMessage;
 }
 
-async function getGuildSubsTableEntry(interaction) {
-	try {
-		gs_tableEntry = await interaction.client.dbs.guildsubs.findOne({ where: { guildID: `${interaction.guildId}` }});
-		return gs_tableEntry;
-	} catch (error) {
-		console.log(`~~~~getGuildSubsTableEntry~~~~\n${error}\n`);
-		let description = `Error occured while trying to subscribe.\n`;
-		interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
-		return null;
-	}
+async function getGuildPreferences(guildId, streamerId) {
+	
+
+	return {messageDescription, wantChannel, channelMessage};
 }
 

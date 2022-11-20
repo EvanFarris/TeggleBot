@@ -5,7 +5,7 @@ const wait = require(`node:timers/promises`).setTimeout;
 const embeddedTitle = `TeggleBot Subscribe Results`;
 const subHelper = require('../helperFiles/subscribe_helper.js');
 const dbHelper = require(`../helperFiles/database_functions`);
-const validatorHelper = require(`../helperFiles/validation_functions.js`);
+const validationHelper = require(`../helperFiles/validation_functions.js`);
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -16,72 +16,60 @@ module.exports = {
 			.setDescription('The url to the streamer you want to subscribe to.')
 			.setRequired(true)),
 	async execute(interaction) {
-		if(interaction.memberPermissions.has(`ADMINISTRATOR`) || interaction.memberPermissions.has('MANAGE_WEBHOOKS')) { 
-			if(interaction.type === InteractionType.ApplicationCommand) {
-				let msg = interaction.options.getString('url');
-				let { website, username } = validatorHelper.checkUrl(msg);
-				//Check if we have a valid website/username combo.
+		if(!interaction.memberPermissions.has(`ADMINISTRATOR`) && !interaction.memberPermissions.has(`MANAGE_WEBHOOKS`)) {
+			await interaction.reply('You must have either the Administrator permission or the Manage Webhooks permission to use this command.');
+			return;
+		}
 
-				if(website === "") {
-					let description = 'Invalid url entered.';
-					return interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});;
-				} else if(username == "") {
-					let description = "Username must not be empty.";
-					return interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
-				} else if(website == "twitch" && !validatorHelper.isValidTwitchUsername(username)){
-					let description = "Invalid username entered.";
-					return interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
-				}
+		if(interaction.type === InteractionType.ApplicationCommand) {
+			let msg = interaction.options.getString('url');
+			let { website, streamerUsername } = validationHelper.splitURLToComponents(msg);
+			//Check if we have a valid website/username combo.
+			console.log(streamerUsername);
+			if(!validationHelper.isWebsiteSupported(interaction, streamerUsername, website)) {return;}
 
-				const gs_tableEntry = await subHelper.getGuildSubsTableEntry(interaction);
+			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
+			//Check to see if the guild is subscribed to anyone. 
+			//If they are, make sure the streamer to be added isn't already subscribed to in the local database already.
+			//Also, the guild must have room to subscribe to continue.
+			if(gs_tableEntry && ((await dbHelper.checkIfGuildIsAlreadySubscribedToStreamer(interaction, gs_tableEntry, streamerUsername, website)) || !(await dbHelper.checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry)))) { return; }
+			const { streamer, streamerId } = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
 				
-				//Check to see if the guild is subscribed to anyone. 
-				//If they are, make sure the streamer to be added isn't already subscribed to in the local database already.
-				//Also, the guild must have room to subscribe to continue.
-				if(gs_tableEntry && ((await dbHelper.checkIfStreamerIsInGuildSubsAlready(interaction, gs_tableEntry, username, website)) || !(await dbHelper.checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry)))) { return; }
-				const { streamer, streamerId } = await validatorHelper.validateUserExists(interaction, username, website);
+			if(streamerId == null) {return;}
 				
-				if(streamerId == null) {return;}
+			const { actionRow, replyEmbedded } = await createEmbeddedComponents(interaction, streamerUsername, website);
 				
-				const { actionRow, replyEmbedded } = await getEmbeddedComponents(interaction, username, website);
-				
-				await sendStreamerToReplyTo(interaction, actionRow, replyEmbedded);
+			await askGuildIfThisIsTheCorrectStreamer(interaction, actionRow, replyEmbedded);
 
-			} else if (interaction.isButton() && interaction.customId == "tb_subscribe_yes") {
-				//Update TWITCH_STREAMERS table
-				let { username, website, streamerId, streamer, gs_tableEntry } = await getFromEmbedded(interaction);
-				
-				if(website == "twitch" && streamer != null) {
-						await dbHelper.updateTwitchStreamer(interaction, streamer);
-				} else if(website == "twitch" && streamerId != "" && streamerId != "!error") {
-						await dbHelper.createTwitchStreamer(interaction, username, streamerId);
-				} else if(website == "youtube") {
+		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_yes") {
+			let { streamerUsername, website, streamerId, streamerAsJSON, gs_tableEntry } = await getFromEmbedded(interaction);
+			console.log(streamerUsername);
+			if(!validationHelper.isWebsiteSupported(interaction, streamerUsername, website)) {return;}
 
-				} else { //Something went wrong, end the function.
-					return;
-				}
+			//Update GUILD_SUBS table
+			let updatedRows, channelId;
+			if(gs_tableEntry != null) {
+				({ updatedRows, channelId } = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, website, false));					
+			} else {
+				 channelId = await dbHelper.createGuildSubs(interaction, streamerUsername, website);
+			} 
 
-				//Update GUILD_SUBS table
-				let succeeded;
-				if(gs_tableEntry != null) {
-					succeeded = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, username, website);					
-				} else {
-					succeeded = await dbHelper.createGuildSubs(interaction, username, website);
-				} 
-
-				if(succeeded == 1) {
-					const usernameFixed = username.charAt(0).toUpperCase() + username.slice(1);
-					const description = `You have successfully subscribed to ${usernameFixed}`; 
-					
-					await interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
-				}
-
-			} else if (interaction.isButton() && interaction.customId == "tb_subscribe_no") {
-				interaction.update({components: []});
+			//Update TWITCH_STREAMERS table
+			if(channelId != null) {
+				await dbHelper.addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, channelId);
+			} else {
+				//something went wrong, twitch_subs not updated
 			}
 
-		} else {
-			await interaction.reply('You must have either the Administrator permission or the Manage Webhooks permission to use this command.');
+			if(channelId != null) {
+				const usernameFixed = streamerUsername.charAt(0).toUpperCase() + streamerUsername.slice(1);
+				const description = `You have successfully subscribed to ${usernameFixed}`; 
+					
+				await interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+			}
+
+		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_no") {
+			interaction.update({components: []});
 		}
 		
 	},
@@ -89,14 +77,14 @@ module.exports = {
 };
 
 async function getFromEmbedded(interaction) {
-	let { website, username } = validatorHelper.checkUrl(interaction.message.embeds[0].url);
-	let gs_tableEntry = await subHelper.getGuildSubsTableEntry(interaction);
-	const { streamer, streamerId } = await validatorHelper.validateUserExists(interaction, username, website);
+	let { website, streamerUsername } = validationHelper.splitURLToComponents(interaction.message.embeds[0].url);
+	let gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
+	const { streamer, streamerId } = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
 
-	return { username, website, streamerId, streamer, gs_tableEntry };
+	return { streamerUsername, website, streamerId, streamer, gs_tableEntry };
 }
 
-async function getEmbeddedComponents(interaction, username, website) {
+async function createEmbeddedComponents(interaction, streamerUsername, website) {
 	const actionRow = new ActionRowBuilder()
 		.addComponents(
 				new ButtonBuilder()
@@ -108,31 +96,31 @@ async function getEmbeddedComponents(interaction, username, website) {
 					.setLabel(`No`)
 					.setStyle(ButtonStyle.Secondary),
 		);
-	let replyEmbedded = await subHelper.createEmbeddedMessageComplicated(username, website, interaction.client.twitchAPI);
+	let replyEmbedded = await subHelper.createEmbeddedMessageComplicated(streamerUsername, website, interaction.client.twitchAPI);
 	return { actionRow, replyEmbedded };
 }
 
-async function sendStreamerToReplyTo(interaction, actionRow, replyEmbedded) {
+async function askGuildIfThisIsTheCorrectStreamer(interaction, actionRow, replyEmbedded) {
 	try {
-			await interaction.reply({ ephemeral: true, embeds: [replyEmbedded], components: [actionRow] })
-				then(() => {
-					setTimeout(function() {
+		await interaction.reply({ ephemeral: true, embeds: [replyEmbedded], components: [actionRow] })
+			then(() => {
+				setTimeout(function() {
 					actionRow.components[0].setDisabled(true);
 					actionRow.components[1].setDisabled(true);
 
 					interaction.editReply({ephemeral: true, embeds: [replyEmbedded], components: [actionRow]});
-					},8000)
-				});
-		} catch (error) {}
-			
-		const filter = i => i.customId == "tb_subscribe_yes" || i.customId == "tb_subscribe_no";
-		const collector = interaction.channel.createMessageComponentCollector({ filter, time: 8000 });
-				
-		try {
-			collector.on(`collect`, async i => {
-				actionRow.components[0].setDisabled(true);
-				actionRow.components[1].setDisabled(true);
-				interaction.editReply({ephemeral: true, embeds: [replyEmbedded], components: [actionRow]});
+				},8000)
 			});
-		} catch (error) {}
+	} catch (error) {}
+			
+	const filter = i => i.customId == "tb_subscribe_yes" || i.customId == "tb_subscribe_no";
+	const collector = interaction.channel.createMessageComponentCollector({ filter, time: 8000 });
+				
+	try {
+		collector.on(`collect`, async i => {
+			actionRow.components[0].setDisabled(true);
+			actionRow.components[1].setDisabled(true);
+			interaction.editReply({ephemeral: true, embeds: [replyEmbedded], components: [actionRow]});
+		});
+	} catch (error) {}
 }

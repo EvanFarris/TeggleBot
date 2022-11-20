@@ -10,7 +10,6 @@
   "license": "ISC",
   "keywords": [],
   "dependencies": {
-    "@discordjs/rest": "^1.0.1",
     "@twurple/api": "^5.2.1",
     "@twurple/auth": "^5.2.1",
     "@twurple/eventsub": "^5.2.1",

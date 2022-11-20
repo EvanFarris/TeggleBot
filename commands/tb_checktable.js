@@ -31,7 +31,7 @@ module.exports = {
 					for(i = 0; i < rows.length; i++) {
 						obj = rows.at(i);
 						numFollowers = JSON.parse(obj.get("followers")).followers;
-						result += `Username: ${obj.get("username")}\nStreamer id: ${obj.get("streamerId")}\nLast online: ${obj.get("lastOnline")}\nNumber of Followers: ${numFollowers.length}\n\n`;
+						result += `Username: ${obj.get("streamerUsername")}\nStreamer id: ${obj.get("streamerId")}\nLast online: ${obj.get("lastOnline")}\nNumber of Followers: ${numFollowers.length}\n\n`;
 					}
 				} else if(table_name == "GUILD_SUBS") {
 

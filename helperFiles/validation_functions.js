@@ -2,60 +2,84 @@ const subHelper = require(`./subscribe_helper.js`);
 const embeddedTitle = `TeggleBot Subscribe Results`;
 module.exports = {
 	isValidTwitchUsername,
-	checkUrl,
+	splitURLToComponents,
 	checkTwitchStreamerExistsLocal,
-	validateUserExists,
-	checkTwitchStreamerExistsAPI
+	validateStreamerExists,
+	checkTwitchStreamerExistsAPI,
+	isWebsiteSupported
 }
 
-function isValidTwitchUsername(username) {
+function isValidTwitchUsername(streamerUsername) {
 	let regex = /[^\w]+/;
-	if(!regex.test(username) && username.length >= 4 && username.length <= 25) {return true;}
+	if(!regex.test(streamerUsername) && streamerUsername.length >= 4 && streamerUsername.length <= 25) {return true;}
 	else {return false;}
 }
 
 
-function checkUrl(msg) {
+function splitURLToComponents(msg) {
 	let twitchRegex = /.*twitch.tv\//;
 	let youtubeRegex = /.*youtube.com\/[user\/]*/;
 	let website = "";
-	let username = "";
+	let streamerUsername = "";
+	
 	if(twitchRegex.test(msg)) {
 		website = "twitch";
-		username = msg.replace(twitchRegex,"").toLowerCase();
+		streamerUsername = msg.replace(twitchRegex,"").toLowerCase();
 	} else if (youtubeRegex.test(msg)) {
 		website = "youtube";
-		username = msg.replace(youtubeRegex,"").toLowerCase();
+		streamerUsername = msg.replace(youtubeRegex,"").toLowerCase();
 	}
 
-	return { website, username };
+	return { website, streamerUsername };
 }
 
-async function validateUserExists(interaction, username, website) {
+function isWebsiteSupported(interaction, streamerUsername, website) {
+	let valid = true;
+	let description;
+	
+	if(website === "") {
+		description = 'Invalid url entered.';
+		valid = false;
+	} else if(streamerUsername == "") {
+		description = "Username must not be empty.";
+		valid = false;
+	} else if(website == "twitch" && !isValidTwitchUsername(streamerUsername)){
+		description = "Invalid username entered.";
+		valid = false;
+	}
+
+	if(!valid) {
+		interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+	}
+
+	return valid;
+}
+
+async function validateStreamerExists(interaction, streamerUsername, website) {
 	//Call the correct api to see if the user is real.
 	let streamerId = null;
-	let streamer = null;
+	let streamerAsJSON = null;
 	if(website == "twitch") {
 		//check local database
-		streamer = await checkTwitchStreamerExistsLocal(interaction, username);
-		if(streamer == null){ //We don't have the streamer in TWITCH_STREAMERS
-			streamerId = await checkTwitchStreamerExistsAPI(interaction.client, username);
+		streamerAsJSON = await checkTwitchStreamerExistsLocal(interaction, streamerUsername);
+		if(streamerAsJSON == null){ //We don't have the streamer in TWITCH_STREAMERS
+			streamerId = await checkTwitchStreamerExistsAPI(interaction.client, streamerUsername);
 			if(streamerId == null || streamerId == "!error!") {
 				let description = 'User does not exist.';
 				interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
 			}				
 		}
 
-		return { streamer, streamerId };
+		return { streamerAsJSON, streamerId };
 	} else if(website == "youtube") {
 		//TODO: Youtube implementation
-		return { streamer, streamerId };
+		return { streamerAsJSON, streamerId };
 	}
 }
 
-async function checkTwitchStreamerExistsLocal(interaction, username) {
+async function checkTwitchStreamerExistsLocal(interaction, streamerUsername) {
 	try {
-		let ts_streamer = await interaction.client.dbs.twitchstreamers.findOne({ where: { username: `${username}` }});
+		let ts_streamer = await interaction.client.dbs.twitchstreamers.findOne({ where: { streamerUsername: `${streamerUsername}` }});
 		if(ts_streamer) {return ts_streamer;} 
 		else {return null;}
 	} catch (error) {
@@ -66,9 +90,9 @@ async function checkTwitchStreamerExistsLocal(interaction, username) {
 	}
 }
 
-async function checkTwitchStreamerExistsAPI(client, username) {
+async function checkTwitchStreamerExistsAPI(client, streamerUsername) {
 	try {
-		const user = await client.twitchAPI.users.getUserByName(`${username}`);
+		const user = await client.twitchAPI.users.getUserByName(`${streamerUsername}`);
 		if(user) {
 			return user.id;
 		} else {
