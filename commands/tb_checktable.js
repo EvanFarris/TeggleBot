@@ -37,7 +37,7 @@ module.exports = {
 
 					for(i = 0; i < rows.length; i++) {
 						obj = rows.at(i);
-						result += `Guild Id: ${obj.get("guildID")}\nNumber of streamers followed: ${obj.get("numStreamers")}\n`;
+						result += `Guild Id: ${obj.get("guildId")}\nNumber of streamers followed: ${obj.get("numStreamers")}\n`;
 					}
 				}
 				if(result != ""){

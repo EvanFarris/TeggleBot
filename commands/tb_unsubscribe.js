@@ -25,14 +25,7 @@ module.exports = {
 			//Check if we have a valid website/username combo.
 			if(!validationHelper.isWebsiteSupported(interaction, streamerUsername, website)) {return;}
 
-			let {actionRow, replyEmbedded } = await createEmbeddedComponents(interaction, streamerUsername, website);
-			await askGuildIfThisIsTheCorrectStreamer(interaction, actionRow, replyEmbedded);
-				
-		} else if(interaction.isButton() && interaction.customId == "tb_unsubscribe_yes") {
-				
-			//Load streamer data from embedded, streamer
-			let { streamerUsername, website, streamerAsJSON, gs_tableEntry } = await getFromEmbedded(interaction);
-
+			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
 			//If the guild isn't subscribed to anyone, return
 			if(!gs_tableEntry) {
 				let description = `You are not subscribed to anyone.`;
@@ -40,37 +33,39 @@ module.exports = {
 			}
 			
 			//If the guild isn't subscribed to the specific person, return
-			if( streamerAsJSON == null ) {
-				let description = `Streamer does not exist in the database`;
+			const {wasFound, streamerId} = await dbHelper.checkIfGuildIsAlreadySubscribedToStreamer(interaction, gs_tableEntry, streamerUsername, website);
+			if(!wasFound) {
+				let description = `You are not subscribed to this streamer.`;
 				return interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)] });
 			}
 
+			let {actionRow, replyEmbedded } = await createEmbeddedComponents(interaction, streamerUsername, streamerId, website);
+			await askGuildIfThisIsTheCorrectStreamer(interaction, actionRow, replyEmbedded);
+				
+		} else if(interaction.isButton() && interaction.customId == "tb_unsubscribe_yes") {
+				
+			//Load streamer data from embedded, streamer
+			let { streamerUsername, website, streamerAsJSON, gs_tableEntry } = await getFromEmbedded(interaction);
+
 			//Remove the streamer from the Guild's list, and then remove the guild from the streamer's list
-			let succeeded = 0;
+			let succeeded = false;
 			if(website == "twitch") {
-				let { updatedRows, channelId } = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, website, true);
+				let { updatedRows, channelId } = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, true);
 				if(channelId != null) {
-					await deleteFollowerFromTwitchStreamer();
+					succeeded = await dbHelper.deleteFollowerFromTwitchStreamer(interaction, streamerAsJSON, streamerAsJSON.get(`streamerId`), channelId);
 				}
-
-				if(updatedRows > 0) {
-					succeeded = await dbHelper.updateTwitchStreamer(interaction, streamerAsJSON, channelId, true); 
-				} else {
-					let description = "Channel was deleted by another call?";
-					return interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
-				}
-
-						
+			
 			} else if(website == "youtube") {
 			} else { //Something went wrong, end the function.
 					return;
 			}
 
-			if(succeeded == 1) {
-				const usernameFixed = streamerUsername.charAt(0).toUpperCase() + streamerUsername.slice(1);
-				const description = `You have been successfully unsubscribed from ${usernameFixed}`; 
-					
-				await interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+			if(succeeded == true) {
+				const description = `You have been successfully unsubscribed from ${streamerAsJSON.get(`streamerDisplayName`)}`; 		
+				return interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+			} else {
+				const description = `Some voodoo magic happened, but you shouldn't be subscribed to the streamer.`;
+				return interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
 			}
 
 		} else {
@@ -82,19 +77,18 @@ module.exports = {
 async function getFromEmbedded(interaction) {
 	const { website, streamerUsername } = validationHelper.splitURLToComponents(interaction.message.embeds[0].url);
 	const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
-	let streamer = null;
-	
+	let streamerAsJSON = null;
 	if(gs_tableEntry) {
 		if( website == "twitch" ) {
-			streamer = await validationHelper.checkTwitchStreamerExistsLocal(interaction, streamerUsername);
+			streamerAsJSON = await validationHelper.checkTwitchStreamerExistsLocal(interaction, streamerUsername);
 		} else if (website == "youtube") {
 
 		}
 	}
-	return { streamerUsername, website, streamer, gs_tableEntry };
+	return { streamerUsername, website, streamerAsJSON, gs_tableEntry };
 }
 
-async function createEmbeddedComponents(interaction, streamerUsername, website) { 
+async function createEmbeddedComponents(interaction, streamerUsername, streamerId, website) { 
 	const actionRow = new ActionRowBuilder()
 		.addComponents(
 			new ButtonBuilder()
@@ -108,6 +102,7 @@ async function createEmbeddedComponents(interaction, streamerUsername, website) 
 		);
 
 	let replyEmbedded = await subHelper.createEmbeddedMessageComplicated(streamerUsername, website, interaction.client.twitchAPI);
+	replyEmbedded.setFooter({text: `${streamerId}`});
 	return {actionRow, replyEmbedded};
 }
 

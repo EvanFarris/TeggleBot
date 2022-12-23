@@ -2,7 +2,8 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder } = require('discord.js');
 const embeddedTitle = `TeggleBot Subscribe Results`;
 module.exports = {
 	createEmbeddedMessage,
-	createEmbeddedMessageComplicated
+	createEmbeddedMessageComplicated,
+	createLiveStreamEmbed
 }
 
 
@@ -36,9 +37,17 @@ async function createEmbeddedMessageComplicated(streamerUsername, website, twitc
 	return embeddedMessage;
 }
 
-async function getGuildPreferences(guildId, streamerId) {
-	
-
-	return {messageDescription, wantChannel, channelMessage};
+async function createLiveStreamEmbed(interaction, streamEvent) {
+	let liveStream = await streamEvent.getStream();
+	let streamer = await streamEvent.getBroadcaster();
+	const lsEmbed = new EmbedBuilder()
+		.setColor(`#0099ff`)
+		.setTitle(`${liveStream.title}`)
+		.setURL(`https://twitch.tv/${streamEvent.broadcasterName}`)
+		.setAuthor({name: `${liveStream.userDisplayName}` , iconURL:`${streamer.profilePictureUrl}`})
+		.setDescription(`${liveStream.gameName}`)
+		.setImage(`${liveStream.thumbnailUrl}`)
+		.setTimestamp();
+	return lsEmbed;
 }
 

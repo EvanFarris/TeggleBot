@@ -14,11 +14,11 @@ module.exports = {
 			let twitchSubs = "";
 			let youtubeSubs = "";
 
-			let dbresult = await interaction.client.dbs.guildsubs.findOne({where: { guildID: `${interaction.guildId}` }});
+			let dbresult = await interaction.client.dbs.guildsubs.findOne({where: { guildId: `${interaction.guildId}` }});
 			if(dbresult) {
 				numStreamers = `${dbresult.get('numStreamers')}`;
 
-				let jsonObj = JSON.parse(dbresult.get('streamers'));
+				let jsonObj = JSON.parse(dbresult.get('streamersInfo'));
 				let name;
 				for(i = 0; i < jsonObj.websites.length; i++) {
 					name = `${jsonObj.names[i]}\n`;
