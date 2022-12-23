@@ -44,11 +44,11 @@ const sequelize = new Sequelize('database','user', 'password', {
 
 //create the GUILD_SUBS table with primary key: guildID, streamers, and numStears.
 const GUILD_SUBS = sequelize.define('guild_subs', {
-	guildID: {
+	guildId: {
 		type: Sequelize.STRING,
 		unique: true,
 	},
-	streamers: Sequelize.TEXT,
+	streamersInfo: Sequelize.TEXT,
 	numStreamers: {
 		type: Sequelize.INTEGER,
 		defaultValue: 1,
@@ -57,11 +57,12 @@ const GUILD_SUBS = sequelize.define('guild_subs', {
 });
 
 const TWITCH_STREAMERS = sequelize.define('twitch_streamers', {
-	streamerUsername: {
+	streamerId: {
 		type: Sequelize.STRING,
 		unique: true,
 	},
-	streamerId: Sequelize.STRING,
+	streamerUsername: Sequelize.STRING,
+	streamerDisplayName: Sequelize.STRING,
 	lastOnline: Sequelize.STRING, //For timed unsubscription purposes
 	followers: Sequelize.TEXT,	//JSON guild channelids to send out livestream notifications.
 });

@@ -4,7 +4,7 @@ const wait = require(`node:timers/promises`).setTimeout;
 
 const embeddedTitle = `TeggleBot Subscribe Results`;
 const subHelper = require('../helperFiles/subscribe_helper.js');
-const dbHelper = require(`../helperFiles/database_functions`);
+const dbHelper = require(`../helperFiles/database_functions.js`);
 const validationHelper = require(`../helperFiles/validation_functions.js`);
 
 module.exports = {
@@ -22,48 +22,46 @@ module.exports = {
 		}
 
 		if(interaction.type === InteractionType.ApplicationCommand) {
-			let msg = interaction.options.getString('url');
-			let { website, streamerUsername } = validationHelper.splitURLToComponents(msg);
+
+			let url = interaction.options.getString('url');
+			let { website, streamerUsername } = validationHelper.splitURLToComponents(url);
 			//Check if we have a valid website/username combo.
-			console.log(streamerUsername);
 			if(!validationHelper.isWebsiteSupported(interaction, streamerUsername, website)) {return;}
 
 			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
 			//Check to see if the guild is subscribed to anyone. 
 			//If they are, make sure the streamer to be added isn't already subscribed to in the local database already.
 			//Also, the guild must have room to subscribe to continue.
-			if(gs_tableEntry && ((await dbHelper.checkIfGuildIsAlreadySubscribedToStreamer(interaction, gs_tableEntry, streamerUsername, website)) || !(await dbHelper.checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry)))) { return; }
-			const { streamer, streamerId } = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
-				
-			if(streamerId == null) {return;}
+			
+			if(!dbHelper.checkGuildSubs(interaction, gs_tableEntry, streamerUsername, website, embeddedTitle)) {return;}
+
+			const { streamerAsJSON, streamerId, streamerDisplayName } = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
+			if(streamerAsJSON == null && streamerId == null) {return;}
 				
 			const { actionRow, replyEmbedded } = await createEmbeddedComponents(interaction, streamerUsername, website);
 				
 			await askGuildIfThisIsTheCorrectStreamer(interaction, actionRow, replyEmbedded);
 
 		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_yes") {
-			let { streamerUsername, website, streamerId, streamerAsJSON, gs_tableEntry } = await getFromEmbedded(interaction);
-			console.log(streamerUsername);
-			if(!validationHelper.isWebsiteSupported(interaction, streamerUsername, website)) {return;}
+			let { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry } = await getFromEmbedded(interaction);
 
 			//Update GUILD_SUBS table
-			let updatedRows, channelId;
+			let updatedRows, channelId = null;
 			if(gs_tableEntry != null) {
-				({ updatedRows, channelId } = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, website, false));					
+				({ updatedRows, channelId } = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, false));					
 			} else {
-				 channelId = await dbHelper.createGuildSubs(interaction, streamerUsername, website);
+				 channelId = await dbHelper.createGuildSubs(interaction, streamerUsername, streamerId, website);
 			} 
 
 			//Update TWITCH_STREAMERS table
 			if(channelId != null) {
-				await dbHelper.addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, channelId);
+				await dbHelper.addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId);
 			} else {
 				//something went wrong, twitch_subs not updated
 			}
 
 			if(channelId != null) {
-				const usernameFixed = streamerUsername.charAt(0).toUpperCase() + streamerUsername.slice(1);
-				const description = `You have successfully subscribed to ${usernameFixed}`; 
+				const description = `You have successfully subscribed to ${streamerDisplayName}`; 
 					
 				await interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
 			}
@@ -79,9 +77,9 @@ module.exports = {
 async function getFromEmbedded(interaction) {
 	let { website, streamerUsername } = validationHelper.splitURLToComponents(interaction.message.embeds[0].url);
 	let gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
-	const { streamer, streamerId } = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
+	const { streamer, streamerId, streamerDisplayName } = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
 
-	return { streamerUsername, website, streamerId, streamer, gs_tableEntry };
+	return { streamerUsername, website, streamerId, streamerDisplayName, streamer, gs_tableEntry };
 }
 
 async function createEmbeddedComponents(interaction, streamerUsername, website) {
