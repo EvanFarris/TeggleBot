@@ -29,7 +29,7 @@ module.exports = {
 				
 		} else if(interaction.isStringSelectMenu()) {
 			const selectedValue = interaction.values[0];
-			console.log(`selectedValue ${selectedValue} | type: ${typeof(selectedValue)}`);
+
 			if(selectedValue == `none`) {return interaction.update({components: []});}
 
 			let {streamerUsername, website, streamerId, channelId} = decomposeSelected(selectedValue);

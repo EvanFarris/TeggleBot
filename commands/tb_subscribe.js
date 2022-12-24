@@ -44,7 +44,7 @@ module.exports = {
 
 		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_yes") {
 			let { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry } = await getFromEmbedded(interaction);
-			console.log(`${streamerUsername} ${website} ${streamerId} ${streamerDisplayName} ${streamerAsJSON} ${gs_tableEntry}`);
+
 			//Update GUILD_SUBS table
 			let updatedRows, channelId = null;
 			let gs_succ = false, ts_succ = false;
