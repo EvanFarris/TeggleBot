@@ -46,7 +46,7 @@ module.exports = {
 			let { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry } = await getFromEmbedded(interaction);
 
 			//Update GUILD_SUBS table
-			let updatedRows, channelId = null;
+			let channelId = interaction.channelId;
 			let gs_succ = false, ts_succ = false;
 			
 			if(gs_tableEntry != null) {
