@@ -118,10 +118,10 @@ async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, str
 			for(i = 0; i < jsonNames.length; i++) {
 				if (jsonNames[i] == streamerUsername && jsonWebsites[i] == website) {
 					if(numSubbed - 1 != 0 ) {
-						jsonNames = jsonNames.splice(i,1);
-						jsonWebsites = jsonWebsites.splice(i,1);
-						jsonChannels = jsonChannels.splice(i,1);
-						jsonIds = jsonIds.splice(i,1);
+						jsonNames.splice(i,1);
+						jsonWebsites.splice(i,1);
+						jsonChannels.splice(i,1);
+						jsonIds.splice(i,1);
 						jsonParsed  = JSON.stringify({"names" : jsonNames, "websites" : jsonWebsites, "channels" : jsonChannels, "streamerIds" : jsonIds });
 						break;  
 					} else {
@@ -148,7 +148,7 @@ async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, str
 	}
 }
 
-async function checkIfGuildIsAlreadySubscribedToStreamer(interaction, gs_tableEntry, streamerUsername, website) {
+function checkIfGuildIsAlreadySubscribedToStreamer(interaction, gs_tableEntry, streamerUsername, website) {
 	let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
 	let jsonNames = jsonParsed.names;
 	let jsonWebsites = jsonParsed.websites;
@@ -168,16 +168,9 @@ async function checkIfGuildIsAlreadySubscribedToStreamer(interaction, gs_tableEn
 	return {wasFound, streamerId};		
 }
 
-async function checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry) {
+function checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry) {
 	let numSubbed = gs_tableEntry.get(`numStreamers`);
 	return numSubbed >= maxSubscribedTo ? false : true;
-	if(numSubbed >= maxSubscribedTo) {
-		let description = 'You can only have up to 5 streamers subscribed at a time.'
-		await interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
-		return false;
-	}
-
-	return true;
 }
 
 async function twitchEventSubSubscribe(interaction, streamerId) {
@@ -263,11 +256,11 @@ async function stopListeners(interaction, streamerId) {
 async function checkGuildSubs(interaction, gs_tableEntry, streamerUsername, website, embeddedTitle) {
 	if(gs_tableEntry) {
 		let wasFound, streamerId, msg = "";
-		({wasFound, streamerId} = await checkIfGuildIsAlreadySubscribedToStreamer(interaction, gs_tableEntry, streamerUsername, website));
+		({wasFound, streamerId} = checkIfGuildIsAlreadySubscribedToStreamer(interaction, gs_tableEntry, streamerUsername, website));
 
 		if(wasFound) {
 			msg = `You are already subscribed to this streamer.`;
-		} else if (!(await checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry))) {
+		} else if (!(checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry))) {
 			msg = 'You can only have up to 5 streamers subscribed at a time.';
 		}
 				
