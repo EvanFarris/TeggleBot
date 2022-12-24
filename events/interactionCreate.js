@@ -2,7 +2,7 @@ const {InteractionType} = require('discord.js');
 module.exports = {
 	name: 'interactionCreate',
 	execute(interaction) {
-		if(!interaction.isCommand() && !interaction.isButton()) return;
+		if(!interaction.isCommand() && !interaction.isButton() && !interaction.isStringSelectMenu()) return;
 		if(interaction.isCommand()) {
 			const command = interaction.client.commands.get(interaction.commandName);
 			if(!command) return;
@@ -18,7 +18,7 @@ module.exports = {
 		} else {
 			if(interaction.customId == "tb_subscribe_yes" || interaction.customId == "tb_subscribe_no") {
 				interaction.client.commands.get("tb_subscribe").execute(interaction);
-			} else if (interaction.customId == "tb_unsubscribe_yes" || interaction.customId == "tb_unsubscribe_no") {
+			} else if (interaction.customId == "tb_unsub_select_menu") {
 				interaction.client.commands.get("tb_unsubscribe").execute(interaction);
 			}
 		}

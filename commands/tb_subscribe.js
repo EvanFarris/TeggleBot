@@ -44,24 +44,30 @@ module.exports = {
 
 		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_yes") {
 			let { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry } = await getFromEmbedded(interaction);
-
+			console.log(`${streamerUsername} ${website} ${streamerId} ${streamerDisplayName} ${streamerAsJSON} ${gs_tableEntry}`);
 			//Update GUILD_SUBS table
 			let updatedRows, channelId = null;
+			let gs_succ = false, ts_succ = false;
+			
 			if(gs_tableEntry != null) {
-				({ updatedRows, channelId } = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, false));					
+				gs_succ = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, false);					
 			} else {
-				 channelId = await dbHelper.createGuildSubs(interaction, streamerUsername, streamerId, website);
+				gs_succ = await dbHelper.createGuildSubs(interaction, streamerUsername, streamerId, website);
 			} 
 
 			//Update TWITCH_STREAMERS table
-			if(channelId != null) {
-				await dbHelper.addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId);
+			if(gs_succ == true) {
+				ts_succ = await dbHelper.addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId);
 			} else {
 				//something went wrong, twitch_subs not updated
 			}
 
-			if(channelId != null) {
+			if(gs_succ == true && ts_succ == true) {
 				const description = `You have successfully subscribed to ${streamerDisplayName}`; 
+					
+				await interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+			} else {
+				const description = `Something went wrong on our end . . .`; 
 					
 				await interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
 			}
