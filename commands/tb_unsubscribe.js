@@ -1,5 +1,5 @@
 
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, InteractionType, ButtonStyle} = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, InteractionType, ButtonStyle, StringSelectMenuBuilder} = require('discord.js');
 
 const subHelper = require('../helperFiles/subscribe_helper.js');
 const dbHelper = require(`../helperFiles/database_functions`);
@@ -8,23 +8,14 @@ const embeddedTitle = `TeggleBot Unsubscribe Results`;
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('tb_unsubscribe')
-		.setDescription('Unsubscribe from a channel.')
-		.addStringOption(option =>
-			option.setName('url')
-			.setDescription('The url to the streamer you want to unsubscribe from.')
-			.setRequired(true)),
+		.setDescription('Unsubscribe from a channel.'),
 	async execute(interaction) {
 		if(!interaction.memberPermissions.has(`ADMINISTRATOR`) && !interaction.memberPermissions.has(`MANAGE_WEBHOOKS`)) {
 			await interaction.reply('You must have either the Administrator permission or the Manage Webhooks permission to use this command.');
 			return;
 		}
+		
 		if(interaction.type === InteractionType.ApplicationCommand) {
-			let msg = interaction.options.getString('url');
-			let { website, streamerUsername } = validationHelper.splitURLToComponents(msg);
-
-			//Check if we have a valid website/username combo.
-			if(!validationHelper.isWebsiteSupported(interaction, streamerUsername, website)) {return;}
-
 			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
 			//If the guild isn't subscribed to anyone, return
 			if(!gs_tableEntry) {
@@ -32,27 +23,27 @@ module.exports = {
 				return interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
 			}
 			
-			//If the guild isn't subscribed to the specific person, return
-			const {wasFound, streamerId} = await dbHelper.checkIfGuildIsAlreadySubscribedToStreamer(interaction, gs_tableEntry, streamerUsername, website);
-			if(!wasFound) {
-				let description = `You are not subscribed to this streamer.`;
-				return interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)] });
-			}
+			let row = getSelectMenu(interaction, gs_tableEntry);
 
-			let {actionRow, replyEmbedded } = await createEmbeddedComponents(interaction, streamerUsername, streamerId, website);
-			await askGuildIfThisIsTheCorrectStreamer(interaction, actionRow, replyEmbedded);
+			await interaction.reply({content: `Choose a person to unsubscribe from`, ephemeral: true, components: [row] });
 				
-		} else if(interaction.isButton() && interaction.customId == "tb_unsubscribe_yes") {
-				
+		} else if(interaction.isStringSelectMenu()) {
+			const selectedValue = interaction.values[0];
+			console.log(`selectedValue ${selectedValue} | type: ${typeof(selectedValue)}`);
+			if(selectedValue == `none`) {return interaction.update({components: []});}
+
+			let {streamerUsername, website, streamerId, channelId} = decomposeSelected(selectedValue);
 			//Load streamer data from embedded, streamer
-			let { streamerUsername, website, streamerAsJSON, gs_tableEntry } = await getFromEmbedded(interaction);
+			
+
+			let {streamerAsJSON, gs_tableEntry} = await getFromDbs(interaction, streamerUsername, website);
 
 			//Remove the streamer from the Guild's list, and then remove the guild from the streamer's list
 			let succeeded = false;
 			if(website == "twitch") {
-				let { updatedRows, channelId } = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, true);
-				if(channelId != null) {
-					succeeded = await dbHelper.deleteFollowerFromTwitchStreamer(interaction, streamerAsJSON, streamerAsJSON.get(`streamerId`), channelId);
+				let updatedRows = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, true);
+				if(updatedRows != null) {
+					succeeded = await dbHelper.deleteFollowerFromTwitchStreamer(interaction, streamerAsJSON, streamerId, channelId);
 				}
 			
 			} else if(website == "youtube") {
@@ -74,8 +65,7 @@ module.exports = {
 	},
 };
 
-async function getFromEmbedded(interaction) {
-	const { website, streamerUsername } = validationHelper.splitURLToComponents(interaction.message.embeds[0].url);
+async function getFromDbs(interaction, streamerUsername, website) {
 	const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
 	let streamerAsJSON = null;
 	if(gs_tableEntry) {
@@ -85,44 +75,35 @@ async function getFromEmbedded(interaction) {
 
 		}
 	}
-	return { streamerUsername, website, streamerAsJSON, gs_tableEntry };
+	return {streamerAsJSON, gs_tableEntry};
 }
 
-async function createEmbeddedComponents(interaction, streamerUsername, streamerId, website) { 
-	const actionRow = new ActionRowBuilder()
-		.addComponents(
-			new ButtonBuilder()
-				.setCustomId('tb_unsubscribe_yes')
-				.setLabel(`Yes (Unsubscribe)`)
-				.setStyle(ButtonStyle.Primary),
-			new ButtonBuilder()
-				.setCustomId(`tb_unsubscribe_no`)
-				.setLabel(`No`)
-				.setStyle(ButtonStyle.Secondary),
-		);
+function getSelectMenu(interaction, gs_tableEntry) {
+	let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
+	let names = jsonParsed.names;
+	let websites = jsonParsed.websites;
+	let channels = jsonParsed.channels;
+	let streamerIds = jsonParsed.streamerIds;
 
-	let replyEmbedded = await subHelper.createEmbeddedMessageComplicated(streamerUsername, website, interaction.client.twitchAPI);
-	replyEmbedded.setFooter({text: `${streamerId}`});
-	return {actionRow, replyEmbedded};
+	let selectMenuOptions = new StringSelectMenuBuilder()
+		.setCustomId(`tb_unsub_select_menu`)
+		.setPlaceholder(`Nothing Selected`);
+	selectMenuOptions.addOptions({label: `No one`, value: `none`});
+	for(i = 0; i < names.length; i++) {
+		selectMenuOptions.addOptions(
+		{
+			label: `${names[i]} | ${websites[i]}`,
+			value: `${streamerIds[i]}|${channels[i]}|${names[i]}|${websites[i]}`
+		});
+	}
+	return (new ActionRowBuilder().addComponents(selectMenuOptions));
 }
 
-async function askGuildIfThisIsTheCorrectStreamer(interaction, actionRow, replyEmbedded) {
-	await interaction.reply({ ephemeral: true, embeds: [replyEmbedded], components: [actionRow] })
-		.then(() => {
-			setTimeout(function() {
-				actionRow.components[0].setDisabled(true);
-				actionRow.components[1].setDisabled(true);
-				interaction.editReply({ephemeral: true, embeds: [replyEmbedded], components: [actionRow]});
-			},8000)
-		});
-
-	const filter = i => i.customId == "tb_unsubscribe_yes" || i.customId == "tb_unsubscribe_no";
-	const collector = interaction.channel.createMessageComponentCollector({ filter, time: 8000 });
-	try {
-			collector.on(`collect`, async i => {
-			actionRow.components[0].setDisabled(true);
-			actionRow.components[1].setDisabled(true);
-			interaction.editReply({ephemeral: true, embeds: [replyEmbedded], components: [actionRow]});
-		});
-	} catch (error) {}
+function decomposeSelected(selectedValue) {
+	let pipeIndexes = selectedValue.split(`|`);
+	let streamerId = pipeIndexes[0];
+	let channelId = pipeIndexes[1];
+	let streamerUsername = pipeIndexes[2];
+	let website = pipeIndexes[3];
+	return {streamerUsername, website, streamerId, channelId};
 }

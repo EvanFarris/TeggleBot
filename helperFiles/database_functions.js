@@ -14,9 +14,9 @@ module.exports = {
 
 async function addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId) {
 	if(streamerAsJSON != null) {
-		await updateTwitchStreamer(interaction, streamerAsJSON, channelId, null, false);
+		return await updateTwitchStreamer(interaction, streamerAsJSON, channelId, null, false);
 	} else {
-		await createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId);
+		return await createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId);
 	}
 }
 
@@ -28,15 +28,20 @@ async function createTwitchStreamer(interaction, streamerUsername, streamerDispl
 	try {
 		let jsonFollowers = JSON.stringify({ "followers" : [channelId], "customMessages" : [""]});
 		const time = new Date();
-		const dbEntryInserted = await interaction.client.dbs.twitchstreamers.create({
+		try{
+			const dbEntryInserted = await interaction.client.dbs.twitchstreamers.create({
 			streamerId: `${streamerId}`,
 			streamerDisplayName: `${streamerDisplayName}`,
 			streamerUsername: `${streamerUsername}`,
 			lastOnline: `${time.getTime()}`,
 			followers: `${jsonFollowers}`,
 			});
-		await twitchEventSubSubscribe(interaction, streamerId);
-
+			await twitchEventSubSubscribe(interaction, streamerId);
+			return true;
+		} catch(error) {
+			return false;
+		}
+		
 	} catch(error) {
 		console.log(`~~~~createTwitchStreamer~~~~\n${error}\n`);
 	}
@@ -75,12 +80,17 @@ async function updateTwitchStreamer(interaction, streamerAsJSON, channelId, stre
 async function createGuildSubs(interaction, streamerUsername, streamerId, website) {
 	try {
 		let jsonStreamers = JSON.stringify({ "names" : [streamerUsername], "websites" : [website], "channels" : [interaction.channelId], "streamerIds" : [streamerId] });
-		const dbEntryInserted = await interaction.client.dbs.guildsubs.create({
+		try {
+			const dbEntryInserted = await interaction.client.dbs.guildsubs.create({
 			guildId: `${interaction.guildId}`,
 			streamersInfo: `${jsonStreamers}`,
 			numStreamers: 1,
-		});
-		return interaction.channelId;
+			}); 
+			return true;
+		} catch (error) {
+			return false;
+		}
+		
 	} catch(error) {
 		console.log(`~~~~createGuildSubs~~~~\n${error}`);
 		return null;
@@ -95,7 +105,6 @@ async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, str
 		let jsonWebsites = jsonParsed.websites;
 		let jsonChannels = jsonParsed.channels;
 		let jsonIds = jsonParsed.streamerIds;
-		let channelId = null;
 
 		let numSubbed = gs_tableEntry.get(`numStreamers`);
 		let updatedRows = null;
@@ -105,21 +114,18 @@ async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, str
 			jsonWebsites.push(website);
 			jsonChannels.push(interaction.channelId);
 			jsonIds.push(streamerId);	
-			channelId = interaction.channelId;
 		} else {
 			for(i = 0; i < jsonNames.length; i++) {
 				if (jsonNames[i] == streamerUsername && jsonWebsites[i] == website) {
 					if(numSubbed - 1 != 0 ) {
-						channelId = jsonChannels[i];
 						jsonNames = jsonNames.splice(i,1);
 						jsonWebsites = jsonWebsites.splice(i,1);
 						jsonChannels = jsonChannels.splice(i,1);
 						jsonIds = jsonIds.splice(i,1);
-						jsonParsed  = JSON.stringify({"names" : jsonNames, "websites" : jsonWebsites, "channels" : jsonChannels });
-						break;
+						jsonParsed  = JSON.stringify({"names" : jsonNames, "websites" : jsonWebsites, "channels" : jsonChannels, "streamerIds" : jsonIds });
+						break;  
 					} else {
 						//Delete entry from table
-						channelId = jsonChannels[0];
 						updatedRows = await interaction.client.dbs.guildsubs.destroy({where: { guildId: `${interaction.guildId}`}});
 					}
 				}
@@ -131,8 +137,10 @@ async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, str
 			jsonParsed  = JSON.stringify({"names" : jsonNames, "websites" : jsonWebsites, "channels" : jsonChannels, "streamerIds" : jsonIds });
 			updatedRows = await interaction.client.dbs.guildsubs.update({streamersInfo: jsonParsed, numStreamers : numSubbed}, {where: {guildId: `${interaction.guildId}`}});
 		}		
-			
-		return {updatedRows, channelId};
+		
+		if(updatedRows != null) {
+			return true;
+		} else {return false;}
 
 	} catch (error) {
 		console.log(`~~~~updateGuildSubs~~~~\n${error}`);
@@ -256,7 +264,7 @@ async function checkGuildSubs(interaction, gs_tableEntry, streamerUsername, webs
 	if(gs_tableEntry) {
 		let wasFound, streamerId, msg = "";
 		({wasFound, streamerId} = await checkIfGuildIsAlreadySubscribedToStreamer(interaction, gs_tableEntry, streamerUsername, website));
-		
+
 		if(wasFound) {
 			msg = `You are already subscribed to this streamer.`;
 		} else if (!(await checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry))) {
