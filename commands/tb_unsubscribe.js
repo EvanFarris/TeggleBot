@@ -42,10 +42,11 @@ module.exports = {
 			let succeeded = false;
 			if(website == "twitch") {
 				let updatedRows = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, true);
-				if(updatedRows != null) {
+
+				if(updatedRows == true) {
 					succeeded = await dbHelper.deleteFollowerFromTwitchStreamer(interaction, streamerAsJSON, streamerId, channelId);
 				}
-			
+
 			} else if(website == "youtube") {
 			} else { //Something went wrong, end the function.
 					return;

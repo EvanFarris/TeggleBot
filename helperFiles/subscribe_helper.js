@@ -37,7 +37,8 @@ async function createEmbeddedMessageComplicated(streamerUsername, website, twitc
 	return embeddedMessage;
 }
 
-async function createLiveStreamEmbed(interaction, streamEvent) {
+//TODO: Embed fails to be made as a property is null
+async function createLiveStreamEmbed(streamEvent) {
 	let liveStream = await streamEvent.getStream();
 	let streamer = await streamEvent.getBroadcaster();
 	const lsEmbed = new EmbedBuilder()

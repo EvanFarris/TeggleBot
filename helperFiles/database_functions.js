@@ -9,12 +9,13 @@ module.exports = {
 	checkIfGuildIsAlreadySubscribedToStreamer,
 	checkIfGuildCanSubscribeToAnotherStreamer,
 	getGuildSubsTableEntry,
-	checkGuildSubs
+	checkGuildSubs,
+	twitchEventSubSubscribe
 }
 
 async function addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId) {
 	if(streamerAsJSON != null) {
-		return await updateTwitchStreamer(interaction, streamerAsJSON, channelId, null, false);
+		return await updateTwitchStreamer(interaction, streamerAsJSON, channelId, streamerId, false);
 	} else {
 		return await createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId);
 	}
@@ -36,7 +37,7 @@ async function createTwitchStreamer(interaction, streamerUsername, streamerDispl
 			lastOnline: `${time.getTime()}`,
 			followers: `${jsonFollowers}`,
 			});
-			await twitchEventSubSubscribe(interaction, streamerId);
+			await twitchEventSubSubscribe(interaction.client, streamerId);
 			return true;
 		} catch(error) {
 			return false;
@@ -50,6 +51,7 @@ async function createTwitchStreamer(interaction, streamerUsername, streamerDispl
 async function updateTwitchStreamer(interaction, streamerAsJSON, channelId, streamerId, isDeletion) {
 	let followersParsed = JSON.parse(streamerAsJSON.get('followers')).followers;
 	let customMessagesParsed = JSON.parse(streamerAsJSON.get('followers')).customMessages;
+
 	if(!isDeletion) {
 		followersParsed.push(`${channelId}`);
 		customMessagesParsed.push(``);
@@ -131,7 +133,7 @@ async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, str
 				}
 			}
 		}
-			
+
 		if(updatedRows == null) {
 			numSubbed += (-1) ** isDeletion;
 			jsonParsed  = JSON.stringify({"names" : jsonNames, "websites" : jsonWebsites, "channels" : jsonChannels, "streamerIds" : jsonIds });
@@ -173,17 +175,17 @@ function checkIfGuildCanSubscribeToAnotherStreamer(interaction, gs_tableEntry) {
 	return numSubbed >= maxSubscribedTo ? false : true;
 }
 
-async function twitchEventSubSubscribe(interaction, streamerId) {
+async function twitchEventSubSubscribe(client, streamerId) {
 	try{
-		const onlineSubscription = await interaction.client.twitchlistener.subscribeToStreamOnlineEvents(streamerId, esStreamOnlineEvent => {
-			streamerNotification(interaction, esStreamOnlineEvent, true);
+		const onlineSubscription = await client.twitchListener.subscribeToStreamOnlineEvents(streamerId, esStreamOnlineEvent => {
+			streamerNotification(client, esStreamOnlineEvent, true);
 		});
 
-		const offlineSubscription = await interaction.client.twitchlistener.subscribeToStreamOfflineEvents(streamerId, esStreamOfflineEvent => {
-			streamerNotification(interaction, esStreamOfflineEvent, false);
+		const offlineSubscription = await client.twitchListener.subscribeToStreamOfflineEvents(streamerId, esStreamOfflineEvent => {
+			streamerNotification(client, esStreamOfflineEvent, false);
 		});
 
-		interaction.client.hmap.set(streamerId, {onlineSubscription, offlineSubscription});
+		client.hmap.set(streamerId, {onlineSubscription, offlineSubscription});
 	} catch (error) {
 		console.log(`~~~~twitchEventSubSubscribe~~~~\n${error}\n`);
 	}
@@ -191,33 +193,35 @@ async function twitchEventSubSubscribe(interaction, streamerId) {
 }
 
 //TODO: create embed with stream info, set it in 198
-async function streamerNotification(interaction, streamEvent, isLiveNotification) {
+async function streamerNotification(client, streamEvent, isLiveNotification) {
 	try {
 		const time = new Date();
-		let dbEntry = await interaction.client.dbs.twitchstreamers.findOne({ where: { streamerId: `${streamEvent.broadcasterId}`}});
+		let dbEntry = await client.dbs.twitchstreamers.findOne({ where: { streamerId: `${streamEvent.broadcasterId}`}});
 		if (dbEntry) {
 			//Get all of the guild channels that we need to notify, update last time online
 			let channelsToNotify = JSON.parse(dbEntry.get('followers')).followers;
 			let customMessages = JSON.parse(dbEntry.get(`followers`)).customMessages;
 			let newDate = `${time.getTime()}`;
 			
-			interaction.client.dbs.twitchstreamers.update({lastOnline: `${newDate}`}, {where: {streamerId: `${streamEvent.broadcasterId}`}});
+			client.dbs.twitchstreamers.update({lastOnline: `${newDate}`}, {where: {streamerId: `${streamEvent.broadcasterId}`}});
 			
 			//Default message to send discord channel
 			let msg, channel;
 			if(isLiveNotification) {
-				const embed = await subHelper.createLiveStreamEmbed(interaction, streamEvent);
+				const embed = await subHelper.createLiveStreamEmbed(streamEvent);
 				msg = `${streamEvent.broadcasterDisplayName} is now live!`;
 				for( i = 0; i < channelsToNotify.length; i++ ) {
-					channel = await interaction.client.channels.cache.get(`${channelsToNotify[i]}`);
-					if(customMessages[i].length != 0) {channel.send({content: customMessages[i], embeds: [embed]});}
-					else {channel.send({content: msg, embeds: [embed]});}
+					channel = await client.channels.cache.get(`${channelsToNotify[i]}`);
+					if(channel) {
+						if(customMessages[i].length != 0) {channel.send({content: customMessages[i], embeds: [embed]});}
+						else {channel.send({content: msg, embeds: [embed]});}
+					} //TODO: Else to notify channel deleted?
 				}
 			} else {
 				msg = `${streamEvent.broadcasterDisplayName} went offline!`;
 				for( i = 0; i < channelsToNotify.length; i++ ) {
-					channel = await interaction.client.channels.cache.get(`${channelsToNotify[i]}`);
-					channel.send(msg);
+					channel = await client.channels.cache.get(`${channelsToNotify[i]}`);
+					if(channel) {channel.send(msg);}		
 				}
 			}
 			
