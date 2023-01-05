@@ -72,6 +72,7 @@ async function validateStreamerExists(interaction, streamerUsername, website) {
 			}				
 		} else {
 			streamerDisplayName = streamerAsJSON.get(`streamerDisplayName`);
+			streamerId = streamerAsJSON.get(`streamerId`);
 		}
 
 		return { streamerAsJSON, streamerId, streamerDisplayName };

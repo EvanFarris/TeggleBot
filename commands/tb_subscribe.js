@@ -60,6 +60,7 @@ module.exports = {
 				ts_succ = await dbHelper.addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId);
 			} else {
 				//something went wrong, twitch_subs not updated
+				console.log(`Couldn's update Twitch_subs...`);
 			}
 
 			if(gs_succ == true && ts_succ == true) {
@@ -83,9 +84,10 @@ module.exports = {
 async function getFromEmbedded(interaction) {
 	let { website, streamerUsername } = validationHelper.splitURLToComponents(interaction.message.embeds[0].url);
 	let gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
-	const { streamer, streamerId, streamerDisplayName } = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
+	
+	const { streamerAsJSON, streamerId, streamerDisplayName } = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
 
-	return { streamerUsername, website, streamerId, streamerDisplayName, streamer, gs_tableEntry };
+	return { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry };
 }
 
 async function createEmbeddedComponents(interaction, streamerUsername, website) {
