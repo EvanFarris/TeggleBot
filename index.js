@@ -10,6 +10,8 @@ const { ApiClient } = require('@twurple/api');
 const { ClientCredentialsAuthProvider } = require('@twurple/auth');
 const { DirectConnectionAdapter, EventSubListener, ReverseProxyAdapter } = require('@twurple/eventsub');
 
+const force = process.env.npm_config_force || false;
+
 async function main() {
 	const client = new Client({ intents: [GatewayIntentBits.Guilds]});
 	client.commands = new Collection();
@@ -63,6 +65,8 @@ async function main() {
 		},
 		streamerUsername: Sequelize.STRING,
 		streamerDisplayName: Sequelize.STRING,
+		streamerDescription: Sequelize.STRING,
+		streamerIcon: Sequelize.STRING,
 		lastOnline: Sequelize.STRING, //For timed unsubscription purposes
 		followers: Sequelize.TEXT,	//JSON guild channelids to send out livestream notifications.
 	});
@@ -71,8 +75,8 @@ async function main() {
 	client.dbs = sequelize;
 	client.dbs.guildsubs = GUILD_SUBS;
 	client.dbs.twitchstreamers = TWITCH_STREAMERS;
-	client.dbs.guildsubs.sync();
-	client.dbs.twitchstreamers.sync();
+	client.dbs.guildsubs.sync({force: force});
+	client.dbs.twitchstreamers.sync({force: force});
 	//Create map and attach it to client. Initialize it in ready.js
 	client.hmap = new Map();
 
@@ -93,8 +97,7 @@ async function main() {
 
 	let secret = listenerString;
 	//required for ngrok
-	//apiClient.eventSub.deleteAllSubscriptions();
-
+	if(force) {apiClient.eventSub.deleteAllSubscriptions();}
 
 	const twitchListener = new EventSubListener({apiClient, adapter: RPAdapter, secret, strictHostCheck: true});
 	client.twitchListener = twitchListener;
