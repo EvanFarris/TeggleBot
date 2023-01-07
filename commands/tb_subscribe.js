@@ -35,15 +35,15 @@ module.exports = {
 			
 			if(!dbHelper.checkGuildSubs(interaction, gs_tableEntry, streamerUsername, website, embeddedTitle)) {return;}
 
-			const { streamerAsJSON, streamerId, streamerDisplayName } = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
+			const { streamerAsJSON, streamerId, streamerDisplayName, streamerDescription, streamerIcon} = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
 			if(streamerAsJSON == null && streamerId == null) {return;}
 				
-			const { actionRow, replyEmbedded } = await createEmbeddedComponents(interaction, streamerUsername, website);
+			const { actionRow, replyEmbedded } = await createEmbeddedComponents(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon, streamerId);
 				
 			await askGuildIfThisIsTheCorrectStreamer(interaction, actionRow, replyEmbedded);
 
 		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_yes") {
-			let { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry } = await getFromEmbedded(interaction);
+			let { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry, streamerDescription, streamerIcon} = await getFromEmbedded(interaction);
 
 			//Update GUILD_SUBS table
 			let channelId = interaction.channelId;
@@ -57,10 +57,10 @@ module.exports = {
 
 			//Update TWITCH_STREAMERS table
 			if(gs_succ == true) {
-				ts_succ = await dbHelper.addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId);
+				ts_succ = await dbHelper.addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId, streamerDescription, streamerIcon);
 			} else {
 				//something went wrong, twitch_subs not updated
-				console.log(`Couldn's update Twitch_subs...`);
+				console.log(`Couldn't update Twitch_subs...`);
 			}
 
 			if(gs_succ == true && ts_succ == true) {
@@ -82,15 +82,22 @@ module.exports = {
 };
 
 async function getFromEmbedded(interaction) {
-	let { website, streamerUsername } = validationHelper.splitURLToComponents(interaction.message.embeds[0].url);
-	let gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
-	
-	const { streamerAsJSON, streamerId, streamerDisplayName } = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
+	const previousEmbed = interaction.message.embeds[0];
+	const footerFields = previousEmbed.footer.text.split(`|`);
 
-	return { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry };
+	const streamerIcon = previousEmbed.image.url;
+	const streamerDescription = previousEmbed.description;
+	const website = footerFields[0];
+	const streamerUsername = footerFields[1];
+	const streamerDisplayName = footerFields[2];
+	const streamerId = footerFields[3]; 
+	let gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
+	let streamerAsJSON = await validationHelper.checkTwitchStreamerExistsLocal(interaction.client, streamerUsername);
+
+	return { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry, streamerDescription, streamerIcon};
 }
 
-async function createEmbeddedComponents(interaction, streamerUsername, website) {
+async function createEmbeddedComponents(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon, streamerId) {
 	const actionRow = new ActionRowBuilder()
 		.addComponents(
 				new ButtonBuilder()
@@ -102,7 +109,7 @@ async function createEmbeddedComponents(interaction, streamerUsername, website) 
 					.setLabel(`No`)
 					.setStyle(ButtonStyle.Secondary),
 		);
-	let replyEmbedded = await subHelper.createEmbeddedMessageComplicated(streamerUsername, website, interaction.client.twitchAPI);
+	let replyEmbedded = await subHelper.createEmbeddedMessageComplicated(streamerUsername, website, streamerDisplayName, streamerDescription, streamerIcon, streamerId);
 	return { actionRow, replyEmbedded };
 }
 

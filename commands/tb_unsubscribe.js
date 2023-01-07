@@ -44,7 +44,7 @@ module.exports = {
 				let updatedRows = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, true);
 
 				if(updatedRows == true) {
-					succeeded = await dbHelper.deleteFollowerFromTwitchStreamer(interaction, streamerAsJSON, streamerId, channelId);
+					succeeded = await dbHelper.deleteFollowerFromTwitchStreamer(interaction.client, streamerAsJSON, streamerId, channelId);
 				}
 
 			} else if(website == "youtube") {
@@ -71,7 +71,7 @@ async function getFromDbs(interaction, streamerUsername, website) {
 	let streamerAsJSON = null;
 	if(gs_tableEntry) {
 		if( website == "twitch" ) {
-			streamerAsJSON = await validationHelper.checkTwitchStreamerExistsLocal(interaction, streamerUsername);
+			streamerAsJSON = await validationHelper.checkTwitchStreamerExistsLocal(interaction.client, streamerUsername);
 		} else if (website == "youtube") {
 
 		}

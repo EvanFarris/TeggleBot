@@ -4,7 +4,7 @@ module.exports = {
 	name: 'ready',
 	once: true,
 	execute(client) {
-		console.log("Calming down Discord . . .");
+		console.log("Calming down the Discord . . .");
 		startListeners(client);
 		console.log(`Ready! Logged in as ${client.user.tag}`);
 	},

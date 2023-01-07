@@ -13,19 +13,19 @@ module.exports = {
 	twitchEventSubSubscribe
 }
 
-async function addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId) {
+async function addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId, streamerDescription, streamerIcon) {
 	if(streamerAsJSON != null) {
-		return await updateTwitchStreamer(interaction, streamerAsJSON, channelId, streamerId, false);
+		return await updateTwitchStreamer(interaction.client, streamerAsJSON, channelId, streamerId, false);
 	} else {
-		return await createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId);
+		return await createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId, streamerDescription, streamerIcon);
 	}
 }
 
-async function deleteFollowerFromTwitchStreamer(interaction, streamerAsJSON, streamerId, channelId) {
-	return await updateTwitchStreamer(interaction, streamerAsJSON, channelId, streamerId, true);
+async function deleteFollowerFromTwitchStreamer(client, streamerAsJSON, streamerId, channelId) {
+	return await updateTwitchStreamer(client, streamerAsJSON, channelId, streamerId, true);
 }
 
-async function createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId) {
+async function createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId, streamerDescription, streamerIcon) {
 	try {
 		let jsonFollowers = JSON.stringify({ "followers" : [channelId], "customMessages" : [""]});
 		const time = new Date();
@@ -34,6 +34,8 @@ async function createTwitchStreamer(interaction, streamerUsername, streamerDispl
 			streamerId: `${streamerId}`,
 			streamerDisplayName: `${streamerDisplayName}`,
 			streamerUsername: `${streamerUsername}`,
+			streamerDescription: `${streamerDescription}`,
+			streamerIcon: `${streamerIcon}`,
 			lastOnline: `${time.getTime()}`,
 			followers: `${jsonFollowers}`,
 			});
@@ -48,7 +50,7 @@ async function createTwitchStreamer(interaction, streamerUsername, streamerDispl
 	}
 }
 
-async function updateTwitchStreamer(interaction, streamerAsJSON, channelId, streamerId, isDeletion) {
+async function updateTwitchStreamer(client, streamerAsJSON, channelId, streamerId, isDeletion) {
 	let followersParsed = JSON.parse(streamerAsJSON.get('followers')).followers;
 	let customMessagesParsed = JSON.parse(streamerAsJSON.get('followers')).customMessages;
 
@@ -65,16 +67,16 @@ async function updateTwitchStreamer(interaction, streamerAsJSON, channelId, stre
 	
 	try {
 		if(followersParsed.length > 0) {
-			await interaction.client.dbs.twitchstreamers.update({ "followers": followersAsJSONString }, {where: {streamerId: `${streamerId}`}});
+			await client.dbs.twitchstreamers.update({ "followers": followersAsJSONString }, {where: {streamerId: `${streamerId}`}});
 		} else {
 			await streamerAsJSON.destroy();
-			stopListeners(interaction, streamerId);
+			stopListeners(client, streamerId);
 		}
 		return true;	
 	} catch (error) {
 		let description = "Error in updateTwitchStreamer function."
 		console.log(`~~~~updateTwitchStreamer~~~~\n${error}\n`);
-		await interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+		//await interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
 		return false;
 	}
 }
@@ -84,9 +86,9 @@ async function createGuildSubs(interaction, streamerUsername, streamerId, websit
 		let jsonStreamers = JSON.stringify({ "names" : [streamerUsername], "websites" : [website], "channels" : [interaction.channelId], "streamerIds" : [streamerId] });
 		try {
 			const dbEntryInserted = await interaction.client.dbs.guildsubs.create({
-			guildId: `${interaction.guildId}`,
-			streamersInfo: `${jsonStreamers}`,
-			numStreamers: 1,
+				guildId: `${interaction.guildId}`,
+				streamersInfo: `${jsonStreamers}`,
+				numStreamers: 1,
 			}); 
 			return true;
 		} catch (error) {
@@ -246,12 +248,12 @@ async function getGuildSubsTableEntry(interaction) {
 	}
 }
 
-async function stopListeners(interaction, streamerId) {
-	const {onlineSubscription, offlineSubscription} = interaction.client.hmap.get(streamerId);
+async function stopListeners(client, streamerId) {
+	const {onlineSubscription, offlineSubscription} = client.hmap.get(streamerId);
 	try{
 		await onlineSubscription.stop();
 		await offlineSubscription.stop();
-		interaction.client.hmap.delete(streamerId);
+		client.hmap.delete(streamerId);
 	} catch (error) {
 		console.log(`~~~~stopListeners~~~~\n${error}\n`)
 	}

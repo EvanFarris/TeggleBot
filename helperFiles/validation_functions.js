@@ -60,12 +60,14 @@ async function validateStreamerExists(interaction, streamerUsername, website) {
 	let streamerId = null;
 	let streamerAsJSON = null;
 	let streamerDisplayName = null;
+	let streamerDescription = null;
+	let streamerIcon = null;
 
 	if(website == "twitch") {
 		//check local database
-		streamerAsJSON = await checkTwitchStreamerExistsLocal(interaction, streamerUsername);
+		streamerAsJSON = await checkTwitchStreamerExistsLocal(interaction.client, streamerUsername);
 		if(streamerAsJSON == null){ //We don't have the streamer in TWITCH_STREAMERS
-			({streamerId, streamerDisplayName}  = await checkTwitchStreamerExistsAPI(interaction.client, streamerUsername));
+			({streamerId, streamerDisplayName, streamerDescription, streamerIcon}  = await checkTwitchStreamerExistsAPI(interaction.client, streamerUsername));
 			if(streamerId == null || streamerId == "!error!") {
 				let description = 'User does not exist.';
 				interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
@@ -73,39 +75,42 @@ async function validateStreamerExists(interaction, streamerUsername, website) {
 		} else {
 			streamerDisplayName = streamerAsJSON.get(`streamerDisplayName`);
 			streamerId = streamerAsJSON.get(`streamerId`);
+			streamerDescription = streamerAsJSON.get(`streamerDescription`);
+			streamerIcon = streamerAsJSON.get(`streamerIcon`);
 		}
 
-		return { streamerAsJSON, streamerId, streamerDisplayName };
+		return { streamerAsJSON, streamerId, streamerDisplayName, streamerDescription, streamerIcon };
 	} else if(website == "youtube") {
 		//TODO: Youtube implementation
 		return { streamerAsJSON, streamerId };
 	}
 }
 
-async function checkTwitchStreamerExistsLocal(interaction, streamerUsername) {
+async function checkTwitchStreamerExistsLocal(client, streamerUsername) {
 	try {
-		let ts_streamer = await interaction.client.dbs.twitchstreamers.findOne({ where: { streamerUsername: `${streamerUsername}` }});
+		let ts_streamer = await client.dbs.twitchstreamers.findOne({ where: { streamerUsername: `${streamerUsername}` }});
+		
 		if(ts_streamer) {return ts_streamer;} 
 		else {return null;}
 	} catch (error) {
 		console.log(`~~~~checkTwitchStreamerExistsLocal~~~~\n${error}\n`)
 		let description = `Error occured while trying to see if a streamer exists locally.`;
-		interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});
+		//interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});
 		return null;
 	}
 }
 
 async function checkTwitchStreamerExistsAPI(client, streamerUsername) {
 	try {
+		let streamerId = null, streamerDisplayName = null, streamerIcon = null, streamerDescription = null;
 		const user = await client.twitchAPI.users.getUserByName(`${streamerUsername}`);
 		if(user) {
-			let streamerId = `${user.id}`;
-			let streamerDisplayName = user.displayName;
-			return { streamerId, streamerDisplayName };
-		} else {
-			let streamerId = null, streamerDisplayName = null;
-			return { streamerId, streamerDisplayName };
+			streamerId = `${user.id}`;
+			streamerDisplayName = user.displayName;
+			streamerIcon = user.profilePictureUrl;
+			streamerDescription = user.description;	
 		}
+		return {streamerId, streamerDisplayName, streamerDescription, streamerIcon};
 	} catch (error) {
 		console.log(`~~~~checkTwitchStreamerExistsAPI~~~~\n${error}\n`);
 		return "!error!";
