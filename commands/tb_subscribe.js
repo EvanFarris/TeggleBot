@@ -27,7 +27,7 @@ module.exports = {
 			//Check if we have a valid website/username combo.
 			if(!validationHelper.isWebsiteSupported(interaction, streamerUsername, website)) {return;}
 
-			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
+			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 			//Check to see if the guild is subscribed to anyone. 
 			//If they are, make sure the streamer to be added isn't already subscribed to in the local database already.
 			//Also, the guild must have room to subscribe to continue.
@@ -88,7 +88,7 @@ async function getFromEmbedded(interaction) {
 	const streamerUsername = footerFields[1];
 	const streamerDisplayName = footerFields[2];
 	const streamerId = footerFields[3]; 
-	let gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
+	let gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 	let streamerAsJSON = await validationHelper.checkTwitchStreamerExistsLocal(interaction.client, streamerUsername);
 
 	return { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry, streamerDescription, streamerIcon};

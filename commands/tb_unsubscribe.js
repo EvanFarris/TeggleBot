@@ -16,7 +16,7 @@ module.exports = {
 		}
 		
 		if(interaction.type === InteractionType.ApplicationCommand) {
-			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
+			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 			//If the guild isn't subscribed to anyone, return
 			if(!gs_tableEntry) {
 				let description = `You are not subscribed to anyone.`;
@@ -67,7 +67,7 @@ module.exports = {
 };
 
 async function getFromDbs(interaction, streamerUsername, website) {
-	const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction);
+	const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 	let streamerAsJSON = null;
 	if(gs_tableEntry) {
 		if( website == "twitch" ) {
