@@ -67,6 +67,7 @@ async function main() {
 		streamerDisplayName: Sequelize.STRING,
 		streamerDescription: Sequelize.STRING,
 		streamerIcon: Sequelize.STRING,
+		streamerIconLastCheckedAt: Sequelize.STRING,
 		lastOnline: Sequelize.STRING, //For timed unsubscription purposes
 		followers: Sequelize.TEXT,	//JSON guild channelids to send out livestream notifications.
 	});

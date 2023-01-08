@@ -22,7 +22,6 @@ module.exports = {
 		}
 
 		if(interaction.type === InteractionType.ApplicationCommand) {
-
 			let url = interaction.options.getString('url');
 			let { website, streamerUsername } = validationHelper.splitURLToComponents(url);
 			//Check if we have a valid website/username combo.
@@ -63,16 +62,14 @@ module.exports = {
 				console.log(`Couldn't update Twitch_subs...`);
 			}
 
+			let description;
 			if(gs_succ == true && ts_succ == true) {
-				const description = `You have successfully subscribed to ${streamerDisplayName}`; 
-					
-				await interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+				description = `You have successfully subscribed to ${streamerDisplayName}`; 		
 			} else {
-				const description = `Something went wrong on our end . . .`; 
-					
-				await interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+				description = `Something went wrong on our end . . .`; 
 			}
-
+			interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+		
 		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_no") {
 			interaction.update({components: []});
 		}

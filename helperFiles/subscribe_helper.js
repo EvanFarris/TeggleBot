@@ -37,17 +37,23 @@ async function createEmbeddedMessageComplicated(streamerUsername, website, strea
 }
 
 //TODO: Embed fails to be made as a property is null
-async function createLiveStreamEmbed(streamEvent) {
-	let liveStream = await streamEvent.getStream();
-	let streamer = await streamEvent.getBroadcaster();
+async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
+	let liveStream = await client.twitchAPI.streams.getStreamByUserId(`${streamEvent.broadcasterId}`);
 	const lsEmbed = new EmbedBuilder()
 		.setColor(`#0099ff`)
-		.setTitle(`${liveStream.title}`)
+		.setTitle(`Stream Title`)
+		.setDescription(`Stream Description`)
 		.setURL(`https://twitch.tv/${streamEvent.broadcasterName}`)
-		.setAuthor({name: `${liveStream.userDisplayName}` , iconURL:`${streamer.profilePictureUrl}`})
-		.setDescription(`${liveStream.gameName}`)
-		.setImage(`${liveStream.thumbnailUrl}`)
+		.setAuthor({name: streamEvent.broadcasterDisplayName , iconURL: streamerIcon})
 		.setTimestamp();
+	try{
+		lsEmbed.setTitle(liveStream.title)
+			.setDescription(liveStream.gameName)
+			.setImage(liveStream.getThumbnailUrl(320, 180));
+	} catch(error) {
+		console.log(`~~createLiveStreamEmbed~~\n${error}`);
+	}
+	
 	return lsEmbed;
 }
 

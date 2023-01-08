@@ -29,6 +29,7 @@ async function createTwitchStreamer(interaction, streamerUsername, streamerDispl
 	try {
 		let jsonFollowers = JSON.stringify({ "followers" : [channelId], "customMessages" : [""]});
 		const time = new Date();
+		const curTime = time.getTime();
 		try{
 			const dbEntryInserted = await interaction.client.dbs.twitchstreamers.create({
 			streamerId: `${streamerId}`,
@@ -36,12 +37,14 @@ async function createTwitchStreamer(interaction, streamerUsername, streamerDispl
 			streamerUsername: `${streamerUsername}`,
 			streamerDescription: `${streamerDescription}`,
 			streamerIcon: `${streamerIcon}`,
-			lastOnline: `${time.getTime()}`,
+			streamerIconLastCheckedAt: `${curTime}`,
+			lastOnline: `${curTime}`,
 			followers: `${jsonFollowers}`,
 			});
 			await twitchEventSubSubscribe(interaction.client, streamerId);
 			return true;
 		} catch(error) {
+			console.log(`~createTwitchStreamer~/n${error}`);
 			return false;
 		}
 		
@@ -203,14 +206,16 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 			//Get all of the guild channels that we need to notify, update last time online
 			let channelsToNotify = JSON.parse(dbEntry.get('followers')).followers;
 			let customMessages = JSON.parse(dbEntry.get(`followers`)).customMessages;
-			let newDate = `${time.getTime()}`;
+			let curTime = `${time.getTime()}`;
+
+			const {streamerIcon, streamerIconLastCheckedAt} = await getStreamerIcon(client, dbEntry, streamEvent.broadcasterId, curTime);
 			
-			client.dbs.twitchstreamers.update({lastOnline: `${newDate}`}, {where: {streamerId: `${streamEvent.broadcasterId}`}});
+			client.dbs.twitchstreamers.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`}, {where: {streamerId: `${streamEvent.broadcasterId}`}});
 			
 			//Default message to send discord channel
 			let msg, channel;
 			if(isLiveNotification) {
-				const embed = await subHelper.createLiveStreamEmbed(streamEvent);
+				const embed = await subHelper.createLiveStreamEmbed(client, streamEvent, streamerIcon);
 				msg = `${streamEvent.broadcasterDisplayName} is now live!`;
 				for( i = 0; i < channelsToNotify.length; i++ ) {
 					channel = await client.channels.cache.get(`${channelsToNotify[i]}`);
@@ -276,4 +281,17 @@ async function checkGuildSubs(interaction, gs_tableEntry, streamerUsername, webs
 		}
 	}
 	return true;
+}
+
+async function getStreamerIcon(client, streamerFromDB, streamerId, currentTime) {
+	let streamerIcon, streamerIconLastCheckedAt;
+	streamerIconLastCheckedAt = streamerFromDB.get(`streamerIconLastCheckedAt`);
+	if((+currentTime) > (+streamerIconLastCheckedAt + 86400000)) {
+		const streamerRefreshed = await client.twitchAPI.users.getUserById(streamerId);
+		streamerIcon = streamerRefreshed.profilePictureUrl;
+		streamerIconLastCheckedAt = currentTime;
+	} else {
+		streamerIcon = streamerFromDB.get(`streamerIcon`);
+	}
+	return {streamerIcon, streamerIconLastCheckedAt};
 }
