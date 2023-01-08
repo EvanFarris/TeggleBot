@@ -241,14 +241,14 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 	}
 }
 
-async function getGuildSubsTableEntry(interaction) {
+async function getGuildSubsTableEntry(client, guildId) {
 	try {
-		gs_tableEntry = await interaction.client.dbs.guildsubs.findOne({ where: { guildId: `${interaction.guildId}` }});
+		gs_tableEntry = await client.dbs.guildsubs.findOne({ where: { guildId: `${guildId}` }});
 		return gs_tableEntry;
 	} catch (error) {
 		console.log(`~~~~getGuildSubsTableEntry~~~~\n${error}\n`);
-		let description = `Error occured while trying to subscribe.\n`;
-		interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+		//let description = `Error occured while trying to subscribe.\n`;
+		//interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
 		return null;
 	}
 }
