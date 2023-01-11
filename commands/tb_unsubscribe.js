@@ -47,7 +47,6 @@ module.exports = {
 					succeeded = await dbHelper.deleteFollowerFromTwitchStreamer(interaction.client, streamerAsJSON, streamerId, channelId);
 				}
 
-			} else if(website == "youtube") {
 			} else { //Something went wrong, end the function.
 					return;
 			}
@@ -72,8 +71,6 @@ async function getFromDbs(interaction, streamerUsername, website) {
 	if(gs_tableEntry) {
 		if( website == "twitch" ) {
 			streamerAsJSON = await validationHelper.checkTwitchStreamerExistsLocal(interaction.client, streamerUsername);
-		} else if (website == "youtube") {
-
 		}
 	}
 	return {streamerAsJSON, gs_tableEntry};

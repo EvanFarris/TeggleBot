@@ -18,17 +18,17 @@ function isValidTwitchUsername(streamerUsername) {
 
 function splitURLToComponents(msg) {
 	let twitchRegex = /.*twitch.tv\//;
-	let youtubeRegex = /.*youtube.com\/[user\/]*/;
+	//let youtubeRegex = /.*youtube.com\/[user\/]*/;
 	let website = "";
 	let streamerUsername = "";
 	
 	if(twitchRegex.test(msg)) {
 		website = "twitch";
 		streamerUsername = msg.replace(twitchRegex,"").toLowerCase();
-	} else if (youtubeRegex.test(msg)) {
+	} /*else if (youtubeRegex.test(msg)) {
 		website = "youtube";
 		streamerUsername = msg.replace(youtubeRegex,"").toLowerCase();
-	}
+	}*/
 
 	return { website, streamerUsername };
 }
@@ -38,7 +38,7 @@ function isWebsiteSupported(interaction, streamerUsername, website) {
 	let description;
 	
 	if(website === "") {
-		description = 'Invalid url entered.';
+		description = 'Invalid/Unsupported url entered.';
 		valid = false;
 	} else if(streamerUsername == "") {
 		description = "Username must not be empty.";
@@ -46,7 +46,7 @@ function isWebsiteSupported(interaction, streamerUsername, website) {
 	} else if(website == "twitch" && !isValidTwitchUsername(streamerUsername)){
 		description = "Invalid username entered.";
 		valid = false;
-	}
+	} 
 
 	if(!valid) {
 		interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
@@ -80,9 +80,6 @@ async function validateStreamerExists(interaction, streamerUsername, website) {
 		}
 
 		return { streamerAsJSON, streamerId, streamerDisplayName, streamerDescription, streamerIcon };
-	} else if(website == "youtube") {
-		//TODO: Youtube implementation
-		return { streamerAsJSON, streamerId };
 	}
 }
 

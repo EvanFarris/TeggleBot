@@ -68,8 +68,8 @@ module.exports = {
 			} else {
 				description = `Something went wrong on our end . . .`; 
 			}
+			
 			interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
-		
 		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_no") {
 			interaction.update({components: []});
 		}
@@ -124,7 +124,7 @@ async function askGuildIfThisIsTheCorrectStreamer(interaction, actionRow, replyE
 	} catch (error) {}
 			
 	const filter = i => i.customId == "tb_subscribe_yes" || i.customId == "tb_subscribe_no";
-	const collector = interaction.channel.createMessageComponentCollector({ filter, time: 8000 });
+	const collector = interaction.channel.createMessageCollector({ filter, time: 8000 });
 				
 	try {
 		collector.on(`collect`, async i => {
