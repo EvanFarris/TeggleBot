@@ -9,7 +9,7 @@ module.exports = {
 
 function createEmbeddedMessage(title, description) {
 	const embeddedMessage = new EmbedBuilder()
-		.setColor(`#09f`)
+		.setColor(`#0099ff`)
 		.setTitle(title)
 		.setDescription(description);
 	return embeddedMessage;
@@ -29,9 +29,7 @@ async function createEmbeddedMessageComplicated(streamerUsername, website, strea
 			.setURL(`https://twitch.tv/${streamerUsername}`)
 			.setDescription(streamerDescription)
 			.setFooter({text:`${website}|${streamerUsername}|${streamerDisplayName}|${streamerId}`});
-	} else if (website == "youtube") {
-
-	}
+	} 
 
 	return embeddedMessage;
 }

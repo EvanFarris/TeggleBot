@@ -18,7 +18,7 @@ module.exports = {
 					await dbHelper.deleteFollowerFromTwitchStreamer(guild.client, twitchStreamerEntry, streamerIds[i], streamerChannels[i]);
 				}
 				
-				await subscriptions.destroy();
+				subscriptions.destroy();
 			}
 		} catch (error) {
 			console.log(`~~guildDelete~~\n${error}`);
