@@ -17,10 +17,14 @@ async function main() {
 	client.commands = new Collection();
 	console.log(`Rolling out events and commands . . .`);
 	const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
+	const devFiles = fs.readdirSync(`./devCommands`).filter(file => file.endsWith(`.js`));
 	//Load commands into the client
 	for(const file of commandFiles) {
 		const command = require(`./commands/${file}`);
+		client.commands.set(command.data.name, command);
+	}
+	for(const file of devFiles) {
+		const command = require(`./devCommands/${file}`);
 		client.commands.set(command.data.name, command);
 	}
 
@@ -72,12 +76,24 @@ async function main() {
 		followers: Sequelize.TEXT,	//JSON guild channelids to send out livestream notifications.
 	});
 
+	const SUB_TEMP = sequelize.define(`sub_temp`, {
+		guildId: Sequelize.STRING,
+		streamerUsername: Sequelize.STRING,
+		channelId: Sequelize.STRING,
+		streamerId: Sequelize.STRING,
+		streamerDisplayName: Sequelize.STRING,
+		customMessage: Sequelize.STRING,
+
+	});
+
 	//Attach the database to the discord client so the discord commands can access the related tables.
 	client.dbs = sequelize;
 	client.dbs.guildsubs = GUILD_SUBS;
 	client.dbs.twitchstreamers = TWITCH_STREAMERS;
+	client.dbs.temp = SUB_TEMP;
 	client.dbs.guildsubs.sync({force: force});
 	client.dbs.twitchstreamers.sync({force: force});
+	client.dbs.temp.sync({force: force});
 	//Create map and attach it to client. Initialize it in ready.js
 	client.hmap = new Map();
 

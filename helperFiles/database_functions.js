@@ -10,14 +10,17 @@ module.exports = {
 	checkIfGuildCanSubscribeToAnotherStreamer,
 	getGuildSubsTableEntry,
 	checkGuildSubs,
-	twitchEventSubSubscribe
+	twitchEventSubSubscribe,
+	getExtraSubInfo,
+	storeTempInfo,
+	deleteTempData
 }
 
-async function addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId, streamerDescription, streamerIcon) {
+async function addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId, streamerDescription, streamerIcon, customMessage) {
 	if(streamerAsJSON != null) {
-		return await updateTwitchStreamer(interaction.client, streamerAsJSON, channelId, streamerId, false);
+		return await updateTwitchStreamer(interaction.client, streamerAsJSON, channelId, streamerId, customMessage, false);
 	} else {
-		return await createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId, streamerDescription, streamerIcon);
+		return await createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId, streamerDescription, streamerIcon, customMessage);
 	}
 }
 
@@ -25,9 +28,9 @@ async function deleteFollowerFromTwitchStreamer(client, streamerAsJSON, streamer
 	return await updateTwitchStreamer(client, streamerAsJSON, channelId, streamerId, true);
 }
 
-async function createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId, streamerDescription, streamerIcon) {
+async function createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId, streamerDescription, streamerIcon, customMessage) {
 	try {
-		let jsonFollowers = JSON.stringify({ "followers" : [channelId], "customMessages" : [""]});
+		let jsonFollowers = JSON.stringify({ "followers" : [channelId], "customMessages" : [customMessage]});
 		const time = new Date();
 		const curTime = time.getTime();
 		try{
@@ -53,14 +56,14 @@ async function createTwitchStreamer(interaction, streamerUsername, streamerDispl
 	}
 }
 
-async function updateTwitchStreamer(client, streamerAsJSON, channelId, streamerId, isDeletion) {
+async function updateTwitchStreamer(client, streamerAsJSON, channelId, streamerId, customMessage, isDeletion) {
 	let followersParsed = JSON.parse(streamerAsJSON.get('followers')).followers;
 	let customMessagesParsed = JSON.parse(streamerAsJSON.get('followers')).customMessages;
 
 	if(!isDeletion) {
 		followersParsed.push(`${channelId}`);
-		customMessagesParsed.push(``);
-	} else {
+		customMessagesParsed.push(customMessage);
+	} else {   
 		let index = followersParsed.indexOf(`${channelId}`);
 		followersParsed.splice(index, 1);
 		customMessagesParsed.splice(index, 1);
@@ -84,9 +87,9 @@ async function updateTwitchStreamer(client, streamerAsJSON, channelId, streamerI
 	}
 }
 
-async function createGuildSubs(interaction, streamerUsername, streamerId, website) {
+async function createGuildSubs(interaction, streamerUsername, streamerId, website, channelId) {
 	try {
-		let jsonStreamers = JSON.stringify({ "names" : [streamerUsername], "websites" : [website], "channels" : [interaction.channelId], "streamerIds" : [streamerId] });
+		let jsonStreamers = JSON.stringify({ "names" : [streamerUsername], "websites" : [website], "channels" : [channelId], "streamerIds" : [streamerId] });
 		try {
 			const dbEntryInserted = await interaction.client.dbs.guildsubs.create({
 				guildId: `${interaction.guildId}`,
@@ -105,7 +108,7 @@ async function createGuildSubs(interaction, streamerUsername, streamerId, websit
 			
 }
 
-async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, isDeletion) {
+async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, channelId, isDeletion) {
 	try {
 		let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
 		let jsonNames = jsonParsed.names;
@@ -119,7 +122,7 @@ async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, str
 		if(!isDeletion) {
 			jsonNames.push(streamerUsername);
 			jsonWebsites.push(website);
-			jsonChannels.push(interaction.channelId);
+			jsonChannels.push(channelId);
 			jsonIds.push(streamerId);	
 		} else {
 			for(i = 0; i < jsonNames.length; i++) {
@@ -294,4 +297,41 @@ async function getStreamerIcon(client, streamerFromDB, streamerId, currentTime) 
 		streamerIcon = streamerFromDB.get(`streamerIcon`);
 	}
 	return {streamerIcon, streamerIconLastCheckedAt};
+}
+
+async function getExtraSubInfo(client, guildId, streamerUsername) {
+	try {
+		let streamerDisplayName = null, streamerId = null, channel = null, customMessage = null;
+		let extraInfo = await client.dbs.temp.findOne({ where: { guildId: `${guildId}`, streamerUsername: `${streamerUsername}` }});
+		if(extraInfo) {
+			streamerDisplayName = extraInfo.get(`streamerDisplayName`);
+			streamerId = extraInfo.get(`streamerId`);
+			channelId = extraInfo.get(`channelId`);
+			customMessage = extraInfo.get(`customMessage`);
+			await extraInfo.destroy();
+		}
+		return { streamerDisplayName, streamerId, channel, customMessage };
+	} catch (error) {
+		console.log(`getExtraSubInfo\n${error}`);
+	}
+}
+
+async function storeTempInfo(client, guildId, streamerUsername, channelId, streamerId, streamerDisplayName, customMessage) {
+	try {
+		const dbEntryInserted = await client.dbs.temp.create({
+			guildId: guildId,
+			streamerUsername: streamerUsername,
+			channelId: channelId,
+			streamerId: streamerId,
+			streamerDisplayName: streamerDisplayName,
+			customMessage: customMessage
+		});
+	} catch(error) {
+		console.log(`storeTempInfo\n${error}`);
+	}
+}
+
+async function deleteTempData(client, guildId, streamerUsername) {
+	let tempDB = await client.dbs.temp.findOne({ where: { guildId: `${guildId}`, streamerUsername: `${streamerUsername}` }});
+	if(tempDB) {tempDB.destroy();}
 }
