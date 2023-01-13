@@ -11,7 +11,7 @@ module.exports = {
 
 function isValidTwitchUsername(streamerUsername) {
 	let regex = /[^\w]+/;
-	if(!regex.test(streamerUsername) && streamerUsername.length >= 4 && streamerUsername.length <= 25) {return true;}
+	if(!regex.test(streamerUsername) && streamerUsername.length >= 3 && streamerUsername.length <= 25) {return true;}
 	else {return false;}
 }
 

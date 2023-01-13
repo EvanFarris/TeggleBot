@@ -16,10 +16,10 @@ function createEmbeddedMessage(title, description) {
 }
 
 
-async function createEmbeddedMessageComplicated(streamerUsername, website, streamerDisplayName, streamerDescription, streamerIcon, streamerId) {
+async function createEmbeddedMessageComplicated(streamerUsername, website, streamerDisplayName, streamerDescription, streamerIcon) {
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#0099ff`)
-		.setTitle(`Retrieved ${streamerUsername} from the ${website} API`)
+		.setTitle(`Retrieved ${streamerDisplayName} from the ${website} API`)
 		.setDescription(`Is this the correct streamer?`);
 
 	if(website == "twitch") {
@@ -27,8 +27,7 @@ async function createEmbeddedMessageComplicated(streamerUsername, website, strea
 		embeddedMessage.setTitle(`Is this the correct streamer? (${streamerUsername})`)
 			.setImage(streamerIcon)
 			.setURL(`https://twitch.tv/${streamerUsername}`)
-			.setDescription(streamerDescription)
-			.setFooter({text:`${website}|${streamerUsername}|${streamerDisplayName}|${streamerId}`});
+			.setDescription(streamerDescription);
 	} 
 
 	return embeddedMessage;

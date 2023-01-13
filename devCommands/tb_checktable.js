@@ -20,6 +20,8 @@ module.exports = {
 				rows = await interaction.client.dbs.twitchstreamers.findAll();
 			} else if(table_name == "GUILD_SUBS") {
 				rows = await interaction.client.dbs.guildsubs.findAll();
+			} else if(table_name == "TEMP"){
+				rows = await interaction.client.dbs.temp.findAll();
 			} else {
 				return interaction.reply("Invalid table name entered.");
 			}
@@ -34,11 +36,12 @@ module.exports = {
 						result += `Username: ${obj.get("streamerUsername")}\nStreamer id: ${obj.get("streamerId")}\nLast online: ${obj.get("lastOnline")}\nNumber of Followers: ${numFollowers.length}\n\n`;
 					}
 				} else if(table_name == "GUILD_SUBS") {
-
 					for(i = 0; i < rows.length; i++) {
 						obj = rows.at(i);
 						result += `Guild Id: ${obj.get("guildId")}\nNumber of streamers followed: ${obj.get("numStreamers")}\n`;
 					}
+				} else if(table_name == "TEMP") {
+					result = `${rows.length} entries in TEMP table.`;
 				}
 				if(result != ""){
 					return interaction.reply(`${result}`);

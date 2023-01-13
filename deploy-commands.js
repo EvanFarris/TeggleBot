@@ -8,7 +8,7 @@ const { DISCORD_TOKEN: discordToken, DISCORD_CLIENT_ID: clientID, DISCORD_TEST_S
 const commands = [];
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 const devCommands = [];
-const devFiles = fs.readdirSync(`./devCommands`).filter(file => file.endsWith(`.js`));
+const devFiles = fs.readdirSync('./devCommands').filter(file => file.endsWith('.js'));
 
 for(const file of commandFiles) {
 	const command = require(`./commands/${file}`);
