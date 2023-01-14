@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const fs = require('node:fs');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const { DISCORD_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString } = process.env;
+const { DISCORD_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString, SEQUELIZE_USER: sq_user, SEQUELIZE_PASS: sq_pass } = process.env;
 
 const Sequelize = require('sequelize');
 
@@ -42,7 +42,7 @@ async function main() {
 	}
 	console.log(`Building the database . . . `);
 	//Define the sqlite file
-	const sequelize = new Sequelize('database','user', 'password', {
+	const sequelize = new Sequelize(database: 'database', username: sq_user, password: sq_pass, {
 		host: 'localhost',
 		dialect: 'sqlite',
 		logging: false,
