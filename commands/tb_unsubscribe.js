@@ -1,5 +1,5 @@
 
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, InteractionType, ButtonStyle, StringSelectMenuBuilder} = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, InteractionType, StringSelectMenuBuilder} = require('discord.js');
 
 const subHelper = require('../helperFiles/subscribe_helper.js');
 const dbHelper = require(`../helperFiles/database_functions`);
@@ -22,7 +22,8 @@ module.exports = {
 				let description = `You are not subscribed to anyone.`;
 				return interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
 			}
-			
+
+			//Create the select menu to display
 			let row = getSelectMenu(interaction, gs_tableEntry);
 
 			await interaction.reply({content: `Choose a person to unsubscribe from`, ephemeral: true, components: [row] });
@@ -32,10 +33,8 @@ module.exports = {
 
 			if(selectedValue == `none`) {return interaction.update({components: []});}
 
+			//Separate the chosen option into the four required information, use it to get the table information.
 			let {streamerUsername, website, streamerId, channelId} = decomposeSelected(selectedValue);
-			//Load streamer data from embedded, streamer
-			
-
 			let {streamerAsJSON, gs_tableEntry} = await getFromDbs(interaction, streamerUsername, website);
 
 			//Remove the streamer from the Guild's list, and then remove the guild from the streamer's list

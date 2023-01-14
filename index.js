@@ -13,6 +13,7 @@ const { DirectConnectionAdapter, EventSubListener, ReverseProxyAdapter } = requi
 const force = process.env.npm_config_force || false;
 
 async function main() {
+	//Load commands into the client
 	const client = new Client({ intents: [GatewayIntentBits.Guilds]});
 	client.commands = new Collection();
 	console.log(`Rolling out events and commands . . .`);
@@ -48,7 +49,7 @@ async function main() {
 		storage: 'database.sqlite',
 	});
 
-	//create the GUILD_SUBS table with primary key: guildID, streamers, and numStears.
+	//create the three tables needed.
 	const GUILD_SUBS = sequelize.define('guild_subs', {
 		guildId: {
 			type: Sequelize.STRING,
@@ -86,7 +87,7 @@ async function main() {
 
 	});
 
-	//Attach the database to the discord client so the discord commands can access the related tables.
+	//Attach the database + tables to the discord client so the discord commands can access the related tables.
 	client.dbs = sequelize;
 	client.dbs.guildsubs = GUILD_SUBS;
 	client.dbs.twitchstreamers = TWITCH_STREAMERS;
@@ -94,7 +95,7 @@ async function main() {
 	client.dbs.guildsubs.sync({force: force});
 	client.dbs.twitchstreamers.sync({force: force});
 	client.dbs.temp.sync({force: force});
-	//Create map and attach it to client. Initialize it in ready.js
+	//Create a map and attach it to client. Initialize it in ready.js
 	client.hmap = new Map();
 
 	console.log(`Making facial expressions at Twitch . . .`);
@@ -113,12 +114,13 @@ async function main() {
 	});
 
 	let secret = listenerString;
-	//required for ngrok
+	//Unsubscribe all the events if it's passed in from the command line.
 	if(force) {apiClient.eventSub.deleteAllSubscriptions();}
 
 	const twitchListener = new EventSubListener({apiClient, adapter: RPAdapter, secret, strictHostCheck: true});
 	client.twitchListener = twitchListener;
 
+	//Start the two listeners.
 	await twitchListener.listen();
 	client.login(discordToken);
 }

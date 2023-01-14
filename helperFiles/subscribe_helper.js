@@ -33,7 +33,6 @@ async function createEmbeddedMessageComplicated(streamerUsername, website, strea
 	return embeddedMessage;
 }
 
-//TODO: Embed fails to be made as a property is null
 async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 	let liveStream = await client.twitchAPI.streams.getStreamByUserId(`${streamEvent.broadcasterId}`);
 	const lsEmbed = new EmbedBuilder()

@@ -210,31 +210,45 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 			let channelsToNotify = JSON.parse(dbEntry.get('followers')).followers;
 			let customMessages = JSON.parse(dbEntry.get(`followers`)).customMessages;
 			let curTime = `${time.getTime()}`;
-
+			let initialLength = customMessages.length;
 			const {streamerIcon, streamerIconLastCheckedAt} = await getStreamerIcon(client, dbEntry, streamEvent.broadcasterId, curTime);
 			
-			client.dbs.twitchstreamers.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`}, {where: {streamerId: `${streamEvent.broadcasterId}`}});
-			
 			//Default message to send discord channel
-			let msg, channel;
+			let channel;
 			if(isLiveNotification) {
 				const embed = await subHelper.createLiveStreamEmbed(client, streamEvent, streamerIcon);
-				msg = `${streamEvent.broadcasterDisplayName} is now live!`;
 				for( i = 0; i < channelsToNotify.length; i++ ) {
 					channel = await client.channels.cache.get(`${channelsToNotify[i]}`);
 					if(channel) {
-						if(customMessages[i].length != 0) {channel.send({content: customMessages[i], embeds: [embed]});}
-						else {channel.send({content: msg, embeds: [embed]});}
-					} //TODO: Else to notify channel deleted?
+						try {
+							if(customMessages[i].length != 0) {channel.send({content: customMessages[i], embeds: [embed]});}
+							else {channel.send({embeds: [embed]});}
+						} catch (error) {
+							channelsToNotify.splice(i,1);
+							customMessages.splice(i,1);
+							i--;
+						}
+					} 
 				}
 			} else {
 				msg = `${streamEvent.broadcasterDisplayName} went offline!`;
 				for( i = 0; i < channelsToNotify.length; i++ ) {
 					channel = await client.channels.cache.get(`${channelsToNotify[i]}`);
-					if(channel) {channel.send(msg);}		
+					try{
+						if(channel) {channel.send(msg);}
+					} catch (error) {
+						channelsToNotify.splice(i,1);
+						customMessages.splice(i,1);
+						i--;
+					}	
 				}
 			}
-			
+			if(channelsToNotify.length != initialLength) {
+				let channelsUpdated = JSON.stringify({ "followers" : channelsToNotify, "customMessages" : customMessages});
+				client.dbs.twitchstreamers.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, followers: `${channelsUpdated}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`}, {where: {streamerId: `${streamEvent.broadcasterId}`}});
+			} else {
+				client.dbs.twitchstreamers.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`}, {where: {streamerId: `${streamEvent.broadcasterId}`}});
+			}
 		} else {
 			console.log("Streamer Notification triggered, but streamer was not found.");
 		}
