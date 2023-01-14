@@ -99,7 +99,7 @@ async function getFromEmbedded(interaction, removeTempData) {
 	if(removeTempData) {return streamerUsername;}
 	const streamerIcon = previousEmbed.image.url;
 	const streamerDescription = previousEmbed.description;
-	let {streamerDisplayName, streamerId, channelId, customMessage} = await dbHelper.getExtraSubInfo(interaction.client, interaction.guildId, streamerUsername);
+	let {streamerDisplayName, streamerId, channelId, customMessage} = await dbHelper.getTempInfo(interaction.client, interaction.guildId, streamerUsername);
 	let gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 	let streamerAsJSON = await validationHelper.checkTwitchStreamerExistsLocal(interaction.client, streamerUsername);
 
@@ -132,16 +132,13 @@ async function askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername,
 				
 	try {
 		collector.on(`collect`, async i => {
-			console.log(`collector collected`);
 			actionRow.components[0].setDisabled(true);
 			actionRow.components[1].setDisabled(true);
 			interaction.editReply({ephemeral: true, embeds: [replyEmbedded], components: [actionRow]});
 		});
 
 		collector.on(`end`, collected => {
-			console.log(`collector ended`);
 			if(collected.size == 0) {
-				console.log(`deleting data...`);
 				dbHelper.deleteTempData(interaction.client, interaction.guildId, streamerUsername);
 			}
 			actionRow.components[0].setDisabled(true);

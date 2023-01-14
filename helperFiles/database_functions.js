@@ -11,7 +11,7 @@ module.exports = {
 	getGuildSubsTableEntry,
 	checkGuildSubs,
 	twitchEventSubSubscribe,
-	getExtraSubInfo,
+	getTempInfo,
 	storeTempInfo,
 	deleteTempData
 }
@@ -299,7 +299,7 @@ async function getStreamerIcon(client, streamerFromDB, streamerId, currentTime) 
 	return {streamerIcon, streamerIconLastCheckedAt};
 }
 
-async function getExtraSubInfo(client, guildId, streamerUsername) {
+async function getTempInfo(client, guildId, streamerUsername) {
 	try {
 		let streamerDisplayName = null, streamerId = null, channel = null, customMessage = null;
 		let extraInfo = await client.dbs.temp.findOne({ where: { guildId: `${guildId}`, streamerUsername: `${streamerUsername}` }});
