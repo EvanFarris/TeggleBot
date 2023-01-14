@@ -9,26 +9,22 @@ module.exports = {
 	isWebsiteSupported
 }
 
+//Makes sure the username passed in has only valid characters, and has the correct length
 function isValidTwitchUsername(streamerUsername) {
 	let regex = /[^\w]+/;
 	if(!regex.test(streamerUsername) && streamerUsername.length >= 3 && streamerUsername.length <= 25) {return true;}
 	else {return false;}
 }
 
-
 function splitURLToComponents(msg) {
 	let twitchRegex = /.*twitch.tv\//;
-	//let youtubeRegex = /.*youtube.com\/[user\/]*/;
 	let website = "";
 	let streamerUsername = "";
 	
 	if(twitchRegex.test(msg)) {
 		website = "twitch";
 		streamerUsername = msg.replace(twitchRegex,"").toLowerCase();
-	} /*else if (youtubeRegex.test(msg)) {
-		website = "youtube";
-		streamerUsername = msg.replace(youtubeRegex,"").toLowerCase();
-	}*/
+	} 
 
 	return { website, streamerUsername };
 }
@@ -55,6 +51,7 @@ function isWebsiteSupported(interaction, streamerUsername, website) {
 	return valid;
 }
 
+//Checks both locally and through the api for the streamer.
 async function validateStreamerExists(interaction, streamerUsername, website) {
 	//Call the correct api to see if the user is real.
 	let streamerId = null;

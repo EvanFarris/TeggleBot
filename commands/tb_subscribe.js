@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, InteractionType, ButtonStyle, ChannelType, ComponentType} = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, InteractionType, ButtonStyle, ChannelType, ComponentType} = require('discord.js');
 
 const wait = require(`node:timers/promises`).setTimeout;
 
@@ -31,34 +31,35 @@ module.exports = {
 		}
 
 		if(interaction.type === InteractionType.ApplicationCommand) {
-			
+			//load data from the slash command
 			let url = interaction.options.getString('url');
 			let channel = interaction.options.getChannel(`disc_channel`);
 			let customMessage = interaction.options.getString(`message`) || "";
 
+			//Separate the url into the website and username. Then check if it is a valid combination (currently only twitch.tv links are supported)
 			let { website, streamerUsername } = validationHelper.splitURLToComponents(url);
-			//Check if we have a valid website/username combo.
 			if(!validationHelper.isWebsiteSupported(interaction, streamerUsername, website)) {return;}
 
+			//Get gs_tableEntry for future use, and check to see if the guild is already subscribed to the streamer it's asking for.
 			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
-			//Check to see if the guild is subscribed to anyone. 
-			//If they are, make sure the streamer to be added isn't already subscribed to in the local database already.
-			//Also, the guild must have room to subscribe to continue.
-			
 			if(!dbHelper.checkGuildSubs(interaction, gs_tableEntry, streamerUsername, website, embeddedTitle)) {return;}
 
+			//Check to see if the streamer actually exists, and retrieve relevant information if they do.
 			const { streamerAsJSON, streamerId, streamerDisplayName, streamerDescription, streamerIcon} = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
 			if(streamerAsJSON == null && streamerId == null) {return;}
 			
+			//Store the extraneous streamer's information temporarily (dbHelper's deleteTempInfo)
 			await dbHelper.storeTempInfo(interaction.client, interaction.guildId, streamerUsername, channel.id, streamerId, streamerDisplayName, customMessage);	
-			const { actionRow, replyEmbedded } = await createEmbeddedComponents(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon);
-				
+			
+			//Create the embed and ask the guild if the streamer is the right one.
+			const { actionRow, replyEmbedded } = await createEmbeddedComponents(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon);	
 			await askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername, actionRow, replyEmbedded);
-
 		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_yes") {
+			//This is where the code returns to if the user clicks the yes button.
+			//Get the streamer's data back from the embed and the temp database.
 			let { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry, streamerDescription, streamerIcon, customMessage, channelId } = await getFromEmbedded(interaction, false);
 
-			//Update GUILD_SUBS table
+			//Update GUILD_SUBS table, create an entry if one doesn't exist
 			let gs_succ = false, ts_succ = false;
 			
 			if(gs_tableEntry != null) {
@@ -67,7 +68,7 @@ module.exports = {
 				gs_succ = await dbHelper.createGuildSubs(interaction, streamerUsername, streamerId, website, channelId);
 			} 
 
-			//Update TWITCH_STREAMERS table
+			//Update TWITCH_STREAMERS table. 
 			if(gs_succ == true) {
 				ts_succ = await dbHelper.addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId, streamerDescription, streamerIcon, customMessage);
 			} else {
@@ -75,6 +76,7 @@ module.exports = {
 				console.log(`Couldn't update Twitch_subs...`);
 			}
 
+			//Final response to the user.
 			let description;
 			if(gs_succ == true && ts_succ == true) {
 				description = `You have successfully subscribed to ${streamerDisplayName}`; 		
@@ -84,6 +86,7 @@ module.exports = {
 			
 			interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
 		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_no") {
+			//Clean up the temporary table's data 
 			let streamerUsername = getFromEmbedded(interaction, true);
 			await dbHelper.deleteTempData(interaction.client, interaction.guildId, streamerUsername);
 			interaction.update({components: []});
@@ -93,6 +96,7 @@ module.exports = {
 	
 };
 
+//Get data about the streamer from the embed and the temporary table, and return it to the execute function.
 async function getFromEmbedded(interaction, removeTempData) {
 	const previousEmbed = interaction.message.embeds[0];
 	const {website, streamerUsername} = validationHelper.splitURLToComponents(previousEmbed.url);
@@ -106,6 +110,7 @@ async function getFromEmbedded(interaction, removeTempData) {
 	return { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry, streamerDescription, streamerIcon, customMessage, channelId};
 }
 
+//Create the embed with the help of subHelper.
 async function createEmbeddedComponents(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon) {
 	const actionRow = new ActionRowBuilder()
 		.addComponents(
@@ -122,6 +127,8 @@ async function createEmbeddedComponents(interaction, streamerUsername, streamerD
 	return { actionRow, replyEmbedded };
 }
 
+//Sends the message to the user, sets up a collector to restrict the interaction to only last for 15 seconds
+//Also cleans up the temporary data if the button is not responded to.
 async function askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername, actionRow, replyEmbedded) {
 	try {
 		await interaction.reply({ ephemeral: true, embeds: [replyEmbedded], components: [actionRow] });

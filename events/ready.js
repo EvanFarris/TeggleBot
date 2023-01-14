@@ -24,8 +24,7 @@ async function startListeners(client) {
 		sId = obj.get("streamerId");
 		if(obj.get("lastOnline") > cutoffTime) {
 			await dbHelper.twitchEventSubSubscribe(client, sId);
-		} else { //delete
-
+		} else { 
 		}
 
 		
