@@ -11,6 +11,7 @@ module.exports = {
 		let title = `Tegglebot stats`;
 		let message = `Tegglebot is in ${numGuilds} guilds and is following ${numStreamers} streamers`;
 
-		let embed = embedHelper.createEmbed(title, message);
-	},
+		let myEmbed = await embedHelper.createEmbed(title, message);
+		interaction.reply({embeds: [myEmbed]});
+	}
 };

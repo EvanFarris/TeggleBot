@@ -11,6 +11,7 @@ const { ClientCredentialsAuthProvider } = require('@twurple/auth');
 const { DirectConnectionAdapter, EventSubListener, ReverseProxyAdapter } = require('@twurple/eventsub');
 
 const force = process.env.npm_config_force || false;
+const dbHelper = require(`./helperFiles/database_functions.js`);
 
 async function main() {
 	//Load commands into the client
@@ -42,7 +43,7 @@ async function main() {
 	}
 	console.log(`Building the database . . . `);
 	//Define the sqlite file
-	const sequelize = new Sequelize(database: 'database', username: sq_user, password: sq_pass, {
+	const sequelize = new Sequelize('database', sq_user, sq_pass, {
 		host: 'localhost',
 		dialect: 'sqlite',
 		logging: false,
@@ -97,7 +98,7 @@ async function main() {
 	client.dbs.temp.sync({force: force});
 	//Create a map and attach it to client. Initialize it in ready.js
 	client.hmap = new Map();
-	
+
 	console.log(`Making facial expressions at Twitch . . .`);
 	//Setup the twitch client with auto-refreshing token.
 	const authProvider = new ClientCredentialsAuthProvider(twitchClientId, twitchClientSecret);
@@ -115,14 +116,15 @@ async function main() {
 
 	let secret = listenerString;
 	//Unsubscribe all the events if it's passed in from the command line.
-	if(force) {apiClient.eventSub.deleteAllSubscriptions();}
+	if(force) {await apiClient.eventSub.deleteAllSubscriptions();}
 
 	const twitchListener = new EventSubListener({apiClient, adapter: RPAdapter, secret, strictHostCheck: true});
 	client.twitchListener = twitchListener;
 
 	//Start the two listeners.
 	await twitchListener.listen();
-	client.login(discordToken);
+	await dbHelper.loadPreviousSubscriptions(client);
+	await client.login(discordToken);
 }
 
 main();

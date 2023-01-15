@@ -40,7 +40,7 @@ module.exports = {
 			//Remove the streamer from the Guild's list, and then remove the guild from the streamer's list
 			let succeeded = false;
 			if(website == "twitch") {
-				let updatedRows = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, true);
+				let updatedRows = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, channelId, true);
 
 				if(updatedRows == true) {
 					succeeded = await dbHelper.deleteFollowerFromTwitchStreamer(interaction.client, streamerAsJSON, streamerId, channelId);
@@ -92,6 +92,7 @@ function getSelectMenu(interaction, gs_tableEntry) {
 			label: `${names[i]} | ${websites[i]}`,
 			value: `${streamerIds[i]}|${channels[i]}|${names[i]}|${websites[i]}`
 		});
+
 	}
 	return (new ActionRowBuilder().addComponents(selectMenuOptions));
 }
