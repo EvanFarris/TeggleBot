@@ -41,7 +41,6 @@ module.exports = {
 			let succeeded = false;
 			if(website == "twitch") {
 				let updatedRows = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, channelId, true);
-
 				if(updatedRows == true) {
 					succeeded = await dbHelper.deleteFollowerFromTwitchStreamer(interaction.client, streamerAsJSON, streamerId, channelId);
 				}

@@ -26,7 +26,7 @@ async function addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamer
 }
 
 async function deleteFollowerFromTwitchStreamer(client, streamerAsJSON, streamerId, channelId) {
-	return await updateTwitchStreamer(client, streamerAsJSON, channelId, streamerId, true);
+	return await updateTwitchStreamer(client, streamerAsJSON, channelId, streamerId, null, true);
 }
 
 async function createTwitchStreamer(interaction, streamerUsername, streamerDisplayName, streamerId, channelId, streamerDescription, streamerIcon, customMessage) {
