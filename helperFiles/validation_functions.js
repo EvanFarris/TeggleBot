@@ -1,4 +1,4 @@
-const subHelper = require(`./subscribe_helper.js`);
+const embedHelper = require(`./embed_helper.js`);
 const embeddedTitle = `TeggleBot Subscribe Results`;
 module.exports = {
 	isValidTwitchUsername,
@@ -45,7 +45,7 @@ function isWebsiteSupported(interaction, streamerUsername, website) {
 	} 
 
 	if(!valid) {
-		interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+		interaction.reply({ embeds : [embedHelper.createEmbed(embeddedTitle, description)]});
 	}
 
 	return valid;
@@ -67,7 +67,7 @@ async function validateStreamerExists(interaction, streamerUsername, website) {
 			({streamerId, streamerDisplayName, streamerDescription, streamerIcon}  = await checkTwitchStreamerExistsAPI(interaction.client, streamerUsername));
 			if(streamerId == null || streamerId == "!error!") {
 				let description = 'User does not exist.';
-				interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+				interaction.reply({ embeds : [embedHelper.createEmbed(embeddedTitle, description)]});
 			}				
 		} else {
 			streamerDisplayName = streamerAsJSON.get(`streamerDisplayName`);
@@ -88,8 +88,6 @@ async function checkTwitchStreamerExistsLocal(client, streamerUsername) {
 		else {return null;}
 	} catch (error) {
 		console.log(`~~~~checkTwitchStreamerExistsLocal~~~~\n${error}\n`)
-		let description = `Error occured while trying to see if a streamer exists locally.`;
-		//interaction.reply({ embeds : [createEmbeddedMessage(embeddedTitle, description)]});
 		return null;
 	}
 }

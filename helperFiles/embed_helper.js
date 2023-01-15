@@ -1,13 +1,13 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder } = require('discord.js');
 const embeddedTitle = `TeggleBot Subscribe Results`;
 module.exports = {
-	createEmbeddedMessage,
-	createEmbeddedMessageComplicated,
+	createEmbed,
+	createEmbedComplicated,
 	createLiveStreamEmbed
 }
 
 
-function createEmbeddedMessage(title, description) {
+function createEmbed(title, description) {
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#0099ff`)
 		.setTitle(title)
@@ -16,7 +16,7 @@ function createEmbeddedMessage(title, description) {
 }
 
 
-async function createEmbeddedMessageComplicated(streamerUsername, website, streamerDisplayName, streamerDescription, streamerIcon) {
+async function createEmbedComplicated(streamerUsername, website, streamerDisplayName, streamerDescription, streamerIcon) {
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#0099ff`)
 		.setTitle(`Retrieved ${streamerDisplayName} from the ${website} API`)

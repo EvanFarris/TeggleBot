@@ -1,4 +1,4 @@
-const subHelper = require(`./subscribe_helper.js`);
+const embedHelper = require(`./embed_helper.js`);
 const embeddedTitle = `TeggleBot Subscribe Results`;
 const maxSubscribedTo = 5;
 module.exports = {
@@ -82,7 +82,6 @@ async function updateTwitchStreamer(client, streamerAsJSON, channelId, streamerI
 	} catch (error) {
 		let description = "Error in updateTwitchStreamer function."
 		console.log(`~~~~updateTwitchStreamer~~~~\n${error}\n`);
-		//await interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
 		return false;
 	}
 }
@@ -216,7 +215,7 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 			//Default message to send discord channel
 			let channel;
 			if(isLiveNotification) {
-				const embed = await subHelper.createLiveStreamEmbed(client, streamEvent, streamerIcon);
+				const embed = await embedHelper.createLiveStreamEmbed(client, streamEvent, streamerIcon);
 				for( i = 0; i < channelsToNotify.length; i++ ) {
 					channel = await client.channels.cache.get(`${channelsToNotify[i]}`);
 					if(channel) {
@@ -264,8 +263,6 @@ async function getGuildSubsTableEntry(client, guildId) {
 		return gs_tableEntry;
 	} catch (error) {
 		console.log(`~~~~getGuildSubsTableEntry~~~~\n${error}\n`);
-		//let description = `Error occured while trying to subscribe.\n`;
-		//interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
 		return null;
 	}
 }
@@ -293,7 +290,7 @@ async function checkGuildSubs(interaction, gs_tableEntry, streamerUsername, webs
 		}
 				
 		if(msg != "") {
-			interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, msg)]});
+			interaction.reply({ embeds : [embedHelper.createEmbed(embeddedTitle, msg)]});
 			return false;
 		}
 	}

@@ -3,7 +3,7 @@ const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, InteractionType, B
 const wait = require(`node:timers/promises`).setTimeout;
 
 const embeddedTitle = `TeggleBot Subscribe Results`;
-const subHelper = require('../helperFiles/subscribe_helper.js');
+const embedHelper = require('../helperFiles/embed_helper.js');
 const dbHelper = require(`../helperFiles/database_functions.js`);
 const validationHelper = require(`../helperFiles/validation_functions.js`);
 
@@ -84,7 +84,7 @@ module.exports = {
 				description = `Something went wrong on our end . . .`; 
 			}
 			
-			interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+			interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_no") {
 			//Clean up the temporary table's data 
 			let streamerUsername = getFromEmbedded(interaction, true);
@@ -110,7 +110,7 @@ async function getFromEmbedded(interaction, removeTempData) {
 	return { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry, streamerDescription, streamerIcon, customMessage, channelId};
 }
 
-//Create the embed with the help of subHelper.
+//Create the embed with the help of embedHelper.
 async function createEmbeddedComponents(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon) {
 	const actionRow = new ActionRowBuilder()
 		.addComponents(
@@ -123,7 +123,7 @@ async function createEmbeddedComponents(interaction, streamerUsername, streamerD
 					.setLabel(`No`)
 					.setStyle(ButtonStyle.Secondary),
 		);
-	let replyEmbedded = await subHelper.createEmbeddedMessageComplicated(streamerUsername, website, streamerDisplayName, streamerDescription, streamerIcon);
+	let replyEmbedded = await embedHelper.createEmbedComplicated(streamerUsername, website, streamerDisplayName, streamerDescription, streamerIcon);
 	return { actionRow, replyEmbedded };
 }
 

@@ -4,5 +4,4 @@ node_modules
 build
 npm-debug.log
 database.sqlite
-localhost.crt
-localhost.decrypted.key
+
