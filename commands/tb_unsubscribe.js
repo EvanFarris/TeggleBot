@@ -1,7 +1,7 @@
 
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, InteractionType, StringSelectMenuBuilder} = require('discord.js');
 
-const subHelper = require('../helperFiles/subscribe_helper.js');
+const embedHelper = require('../helperFiles/embed_helper.js');
 const dbHelper = require(`../helperFiles/database_functions`);
 const validationHelper = require(`../helperFiles/validation_functions.js`);
 const embeddedTitle = `TeggleBot Unsubscribe Results`;
@@ -20,7 +20,7 @@ module.exports = {
 			//If the guild isn't subscribed to anyone, return
 			if(!gs_tableEntry) {
 				let description = `You are not subscribed to anyone.`;
-				return interaction.reply({ embeds : [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+				return interaction.reply({ embeds : [embedHelper.createEmbed(embeddedTitle, description)]});
 			}
 
 			//Create the select menu to display
@@ -52,10 +52,10 @@ module.exports = {
 
 			if(succeeded == true) {
 				const description = `You have been successfully unsubscribed from ${streamerAsJSON.get(`streamerDisplayName`)}`; 		
-				return interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+				return interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 			} else {
 				const description = `Some voodoo magic happened, but you shouldn't be subscribed to the streamer.`;
-				return interaction.reply({ embeds: [subHelper.createEmbeddedMessage(embeddedTitle, description)]});
+				return interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 			}
 
 		} else {
