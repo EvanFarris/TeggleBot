@@ -13,7 +13,8 @@ module.exports = {
 	twitchEventSubSubscribe,
 	getTempInfo,
 	storeTempInfo,
-	deleteTempData
+	deleteTempData,
+	loadPreviousSubscriptions
 }
 
 async function addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId, streamerDescription, streamerIcon, customMessage) {
@@ -199,7 +200,6 @@ async function twitchEventSubSubscribe(client, streamerId) {
 	
 }
 
-//TODO: create embed with stream info, set it in 198
 async function streamerNotification(client, streamEvent, isLiveNotification) {
 	try {
 		const time = new Date();
@@ -218,6 +218,7 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 				const embed = await embedHelper.createLiveStreamEmbed(client, streamEvent, streamerIcon);
 				for( i = 0; i < channelsToNotify.length; i++ ) {
 					channel = await client.channels.cache.get(`${channelsToNotify[i]}`);
+
 					if(channel) {
 						try {
 							if(customMessages[i].length != 0) {channel.send({content: customMessages[i], embeds: [embed]});}
@@ -242,6 +243,7 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 					}	
 				}
 			}
+			
 			if(channelsToNotify.length != initialLength) {
 				let channelsUpdated = JSON.stringify({ "followers" : channelsToNotify, "customMessages" : customMessages});
 				client.dbs.twitchstreamers.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, followers: `${channelsUpdated}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`}, {where: {streamerId: `${streamEvent.broadcasterId}`}});
@@ -321,7 +323,8 @@ async function getTempInfo(client, guildId, streamerUsername) {
 			customMessage = extraInfo.get(`customMessage`);
 			await extraInfo.destroy();
 		}
-		return { streamerDisplayName, streamerId, channel, customMessage };
+
+		return { streamerDisplayName, streamerId, channelId, customMessage };
 	} catch (error) {
 		console.log(`getExtraSubInfo\n${error}`);
 	}
@@ -345,4 +348,25 @@ async function storeTempInfo(client, guildId, streamerUsername, channelId, strea
 async function deleteTempData(client, guildId, streamerUsername) {
 	let tempDB = await client.dbs.temp.findOne({ where: { guildId: `${guildId}`, streamerUsername: `${streamerUsername}` }});
 	if(tempDB) {tempDB.destroy();}
+}
+
+async function loadPreviousSubscriptions(client) {
+	let rows = await client.dbs.twitchstreamers.findAll();
+	let sName, sId, obj;
+	let curDate = new Date();
+	let curTime = curDate.getTime();
+	
+	const cutoffTime = curTime - (1000 * 60 * 60 * 24 * 30);
+	
+	for(i = 0; i < rows.length; i++) {
+		obj = rows.at(i);
+		sName = obj.get("streamerUsername");
+		sId = obj.get("streamerId");
+		if(obj.get("lastOnline") > cutoffTime) {
+			await twitchEventSubSubscribe(client, sId);
+		} else { 
+		}
+
+		
+	}
 }

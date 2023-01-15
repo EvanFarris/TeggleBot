@@ -34,7 +34,7 @@ async function createEmbedComplicated(streamerUsername, website, streamerDisplay
 }
 
 async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
-	let liveStream = await client.twitchAPI.streams.getStreamByUserId(`${streamEvent.broadcasterId}`);
+	let liveStream = null;
 	const lsEmbed = new EmbedBuilder()
 		.setColor(`#0099ff`)
 		.setTitle(`Stream Title`)
@@ -42,10 +42,20 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 		.setURL(`https://twitch.tv/${streamEvent.broadcasterName}`)
 		.setAuthor({name: streamEvent.broadcasterDisplayName , iconURL: streamerIcon})
 		.setTimestamp();
+	let maxAttempts = 5;
+	while(!liveStream && maxAttempts > 0) {
+		liveStream = await client.twitchAPI.streams.getStreamByUserId(`${streamEvent.broadcasterId}`);
+		if(!liveStream){
+			sleep(5000);
+			maxAttempts--;
+		}
+	}
 	try{
-		lsEmbed.setTitle(liveStream.title)
-			.setDescription(liveStream.gameName)
-			.setImage(liveStream.getThumbnailUrl(320, 180));
+		if(liveStream) {
+			lsEmbed.setTitle(liveStream.title)
+				.setDescription(liveStream.gameName)
+				.setImage(liveStream.getThumbnailUrl(320, 180));
+		}
 	} catch(error) {
 		console.log(`~~createLiveStreamEmbed~~\n${error}`);
 	}
@@ -53,3 +63,10 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 	return lsEmbed;
 }
 
+function sleep(milliseconds) {
+	const stopTime = Date.now() + milliseconds;
+	let currentTime = Date.now();
+	while(currentTime < stopTime){
+		currentTime = Date.now();
+	}
+}

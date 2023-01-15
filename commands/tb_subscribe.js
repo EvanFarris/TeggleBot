@@ -79,7 +79,7 @@ module.exports = {
 			//Final response to the user.
 			let description;
 			if(gs_succ == true && ts_succ == true) {
-				description = `You have successfully subscribed to ${streamerDisplayName}`; 		
+				description = `You have successfully subscribed to ${streamerDisplayName}.\nNotifications will be sent to <#${channelId}>`; 		
 			} else {
 				description = `Something went wrong on our end . . .`; 
 			}
