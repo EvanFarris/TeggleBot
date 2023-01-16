@@ -20,6 +20,8 @@ module.exports = {
 				interaction.client.commands.get("tb_subscribe").execute(interaction);
 			} else if (interaction.customId == "tb_unsub_select_menu") {
 				interaction.client.commands.get("tb_unsubscribe").execute(interaction);
+			} else if (interaction.customId == "tb_changemessage") {
+				interaction.client.commands.get("tb_changemessage").execute(interaction);
 			}
 		}
 		

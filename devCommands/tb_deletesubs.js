@@ -11,6 +11,7 @@ module.exports = {
 		interaction.client.dbs.twitchstreamers.sync({force: true});
 		interaction.client.dbs.temp.sync({force: true});
 		interaction.client.hmap.clear();
+		interaction.client.mapMessages.clear();
 		interaction.reply("Completed.");
 	},
 	

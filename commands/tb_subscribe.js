@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, InteractionType, ButtonStyle, ChannelType, ComponentType} = require('discord.js');
+const { SlashCommandBuilder, InteractionType, ChannelType, ComponentType} = require('discord.js');
 
 const wait = require(`node:timers/promises`).setTimeout;
 
@@ -52,7 +52,7 @@ module.exports = {
 			await dbHelper.storeTempInfo(interaction.client, interaction.guildId, streamerUsername, channel.id, streamerId, streamerDisplayName, customMessage);	
 			
 			//Create the embed and ask the guild if the streamer is the right one.
-			const { actionRow, replyEmbedded } = await createEmbeddedComponents(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon);	
+			const { actionRow, replyEmbedded } = await embedHelper.createEmbedWithButtons(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon);	
 			await askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername, actionRow, replyEmbedded);
 		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_yes") {
 			//This is where the code returns to if the user clicks the yes button.
@@ -108,23 +108,6 @@ async function getFromEmbedded(interaction, removeTempData) {
 	let streamerAsJSON = await validationHelper.checkTwitchStreamerExistsLocal(interaction.client, streamerUsername);
 
 	return { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry, streamerDescription, streamerIcon, customMessage, channelId};
-}
-
-//Create the embed with the help of embedHelper.
-async function createEmbeddedComponents(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon) {
-	const actionRow = new ActionRowBuilder()
-		.addComponents(
-				new ButtonBuilder()
-					.setCustomId('tb_subscribe_yes')
-					.setLabel(`Yes (Subscribe)`)
-					.setStyle(ButtonStyle.Primary),
-				new ButtonBuilder()
-					.setCustomId(`tb_subscribe_no`)
-					.setLabel(`No`)
-					.setStyle(ButtonStyle.Secondary),
-		);
-	let replyEmbedded = await embedHelper.createEmbedComplicated(streamerUsername, website, streamerDisplayName, streamerDescription, streamerIcon);
-	return { actionRow, replyEmbedded };
 }
 
 //Sends the message to the user, sets up a collector to restrict the interaction to only last for 15 seconds

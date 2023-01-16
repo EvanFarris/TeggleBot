@@ -1,5 +1,4 @@
-
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, InteractionType, StringSelectMenuBuilder} = require('discord.js');
+const { SlashCommandBuilder, InteractionType} = require('discord.js');
 
 const embedHelper = require('../helperFiles/embed_helper.js');
 const dbHelper = require(`../helperFiles/database_functions`);
@@ -24,9 +23,9 @@ module.exports = {
 			}
 
 			//Create the select menu to display
-			let row = getSelectMenu(interaction, gs_tableEntry);
+			let selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `tb_unsub_select_menu`);
 
-			await interaction.reply({content: `Choose a person to unsubscribe from`, ephemeral: true, components: [row] });
+			interaction.reply({content: `Choose a person to unsubscribe from`, ephemeral: true, components: [selectMenu] });
 				
 		} else if(interaction.isStringSelectMenu()) {
 			const selectedValue = interaction.values[0];
@@ -34,7 +33,7 @@ module.exports = {
 			if(selectedValue == `none`) {return interaction.update({components: []});}
 
 			//Separate the chosen option into the four required information, use it to get the table information.
-			let {streamerUsername, website, streamerId, channelId} = decomposeSelected(selectedValue);
+			let {streamerUsername, website, streamerId, channelId} = embedHelper.decomposeSelected(selectedValue);
 			let {streamerAsJSON, gs_tableEntry} = await getFromDbs(interaction, streamerUsername, website);
 
 			//Remove the streamer from the Guild's list, and then remove the guild from the streamer's list
@@ -72,35 +71,4 @@ async function getFromDbs(interaction, streamerUsername, website) {
 		}
 	}
 	return {streamerAsJSON, gs_tableEntry};
-}
-
-function getSelectMenu(interaction, gs_tableEntry) {
-	let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
-	let names = jsonParsed.names;
-	let websites = jsonParsed.websites;
-	let channels = jsonParsed.channels;
-	let streamerIds = jsonParsed.streamerIds;
-
-	let selectMenuOptions = new StringSelectMenuBuilder()
-		.setCustomId(`tb_unsub_select_menu`)
-		.setPlaceholder(`Nothing Selected`);
-	selectMenuOptions.addOptions({label: `No one`, value: `none`});
-	for(i = 0; i < names.length; i++) {
-		selectMenuOptions.addOptions(
-		{
-			label: `${names[i]} | ${websites[i]}`,
-			value: `${streamerIds[i]}|${channels[i]}|${names[i]}|${websites[i]}`
-		});
-
-	}
-	return (new ActionRowBuilder().addComponents(selectMenuOptions));
-}
-
-function decomposeSelected(selectedValue) {
-	let pipeIndexes = selectedValue.split(`|`);
-	let streamerId = pipeIndexes[0];
-	let channelId = pipeIndexes[1];
-	let streamerUsername = pipeIndexes[2];
-	let website = pipeIndexes[3];
-	return {streamerUsername, website, streamerId, channelId};
 }
