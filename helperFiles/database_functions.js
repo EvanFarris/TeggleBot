@@ -14,7 +14,8 @@ module.exports = {
 	getTempInfo,
 	storeTempInfo,
 	deleteTempData,
-	loadPreviousSubscriptions
+	loadPreviousSubscriptions,
+	updateCustomMessage
 }
 
 async function addFollowerToTwitchStreamer(interaction, streamerAsJSON, streamerId, streamerUsername, streamerDisplayName, channelId, streamerDescription, streamerIcon, customMessage) {
@@ -58,22 +59,23 @@ async function createTwitchStreamer(interaction, streamerUsername, streamerDispl
 }
 
 async function updateTwitchStreamer(client, streamerAsJSON, channelId, streamerId, customMessage, isDeletion) {
-	let followersParsed = JSON.parse(streamerAsJSON.get('followers')).followers;
-	let customMessagesParsed = JSON.parse(streamerAsJSON.get('followers')).customMessages;
+	let followersParsed = JSON.parse(streamerAsJSON.get(`followers`));
+	let streamerFollowers = followersParsed.followers;
+	let customMessagesParsed = followersParsed.customMessages;
 
 	if(!isDeletion) {
-		followersParsed.push(`${channelId}`);
+		streamerFollowers.push(`${channelId}`);
 		customMessagesParsed.push(customMessage);
 	} else {   
-		let index = followersParsed.indexOf(`${channelId}`);
-		followersParsed.splice(index, 1);
+		let index = streamerFollowers.indexOf(`${channelId}`);
+		streamerFollowers.splice(index, 1);
 		customMessagesParsed.splice(index, 1);
 	}	
 	
-	let followersAsJSONString = JSON.stringify({"followers" : followersParsed, "customMessages" : customMessagesParsed});
+	let followersAsJSONString = JSON.stringify({"followers" : streamerFollowers, "customMessages" : customMessagesParsed});
 	
 	try {
-		if(followersParsed.length > 0) {
+		if(streamerFollowers.length > 0) {
 			await client.dbs.twitchstreamers.update({ "followers": followersAsJSONString }, {where: {streamerId: `${streamerId}`}});
 		} else {
 			await streamerAsJSON.destroy();
@@ -369,4 +371,20 @@ async function loadPreviousSubscriptions(client) {
 
 		
 	}
+}
+
+async function updateCustomMessage(client, streamerAsJSON, streamerId, channelId, customMessage) {
+	let followersParsed = JSON.parse(streamerAsJSON.get(`followers`));
+	let streamerFollowers = followersParsed.followers;
+	let customMessages = followersParsed.customMessages;
+	for(i = 0; i < streamerFollowers.length; i++) {
+		if(streamerFollowers[i] == channelId) {
+			customMessages[i] = customMessage;
+			break;
+		}
+	}
+	let followersAsJSONString = JSON.stringify({ "followers" : streamerFollowers, "customMessages" : customMessages});
+	const result = await client.dbs.twitchstreamers.update({ "followers": followersAsJSONString }, {where: {streamerId: `${streamerId}`}});
+
+	return result;
 }
