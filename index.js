@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const fs = require('node:fs');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const { DISCORD_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString, SEQUELIZE_USER: sq_user, SEQUELIZE_PASS: sq_pass } = process.env;
+const { DISCORD_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString, SEQUELIZE_USER: sq_user, SEQUELIZE_PASS: sq_pass, HOST_NAME: hName , ADAPTER_PORT: adapterPort, PATH_PREFIX: pathPrefix} = process.env;
 
 const Sequelize = require('sequelize');
 
@@ -109,10 +109,10 @@ async function main() {
 
 
 	const RPAdapter = new ReverseProxyAdapter({
-		hostName: `teggle.dev`,
-		pathPrefix: `/tegglebot`,
+		hostName: hName,
+		pathPrefix: pathPrefix,
 		usePathPrefixInHandlers: true,
-		port: 3000
+		port: adapterPort
 	});
 
 	let secret = listenerString;
