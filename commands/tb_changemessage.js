@@ -16,6 +16,10 @@ module.exports = {
 			const customMessage = interaction.options.getString(`message`);
 			const firstResponseMessage = `Choose the streamer to update.`;
 			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
+			if(!gs_tableEntry){
+				let description = "You are not subscribed to anyone.";
+				return interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
+			};
 			const selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `tb_changemessage`);
 			
 			interaction.client.mapMessages.set(interaction.guildId, customMessage);
