@@ -134,7 +134,6 @@ async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, str
 						jsonWebsites.splice(i,1);
 						jsonChannels.splice(i,1);
 						jsonIds.splice(i,1);
-						jsonParsed  = JSON.stringify({"names" : jsonNames, "websites" : jsonWebsites, "channels" : jsonChannels, "streamerIds" : jsonIds });
 						break;  
 					} else {
 						//Delete entry from table
@@ -211,7 +210,7 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 			let channelsToNotify = JSON.parse(dbEntry.get('followers')).followers;
 			let customMessages = JSON.parse(dbEntry.get(`followers`)).customMessages;
 			let curTime = `${time.getTime()}`;
-			let initialLength = customMessages.length;
+			let initialLength = channelsToNotify.length;
 			const {streamerIcon, streamerIconLastCheckedAt} = await getStreamerIcon(client, dbEntry, streamEvent.broadcasterId, curTime);
 			
 			//Default message to send discord channel
@@ -226,9 +225,11 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 							if(customMessages[i].length != 0) {channel.send({content: customMessages[i], embeds: [embed]});}
 							else {channel.send({embeds: [embed]});}
 						} catch (error) {
+							console.log(`Error sending notification\n${error}`);
+							/*
 							channelsToNotify.splice(i,1);
 							customMessages.splice(i,1);
-							i--;
+							i--;*/
 						}
 					} 
 				}
@@ -239,9 +240,11 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 					try{
 						if(channel) {channel.send(msg);}
 					} catch (error) {
+						console.log(`Error sending notification\n${error}`);
+						/*
 						channelsToNotify.splice(i,1);
 						customMessages.splice(i,1);
-						i--;
+						i--;*/
 					}	
 				}
 			}
@@ -302,16 +305,21 @@ async function checkGuildSubs(interaction, gs_tableEntry, streamerUsername, webs
 }
 
 async function getStreamerIcon(client, streamerFromDB, streamerId, currentTime) {
-	let streamerIcon, streamerIconLastCheckedAt;
-	streamerIconLastCheckedAt = streamerFromDB.get(`streamerIconLastCheckedAt`);
-	if((+currentTime) > (+streamerIconLastCheckedAt + 86400000)) {
-		const streamerRefreshed = await client.twitchAPI.users.getUserById(streamerId);
-		streamerIcon = streamerRefreshed.profilePictureUrl;
-		streamerIconLastCheckedAt = currentTime;
-	} else {
-		streamerIcon = streamerFromDB.get(`streamerIcon`);
+	try{
+		let streamerIcon, streamerIconLastCheckedAt;
+		streamerIconLastCheckedAt = streamerFromDB.get(`streamerIconLastCheckedAt`);
+		if((+currentTime) > (+streamerIconLastCheckedAt + 86400000)) {
+			const streamerRefreshed = await client.twitchAPI.users.getUserById(streamerId);
+			streamerIcon = streamerRefreshed.profilePictureUrl;
+			streamerIconLastCheckedAt = currentTime;
+		} else {
+			streamerIcon = streamerFromDB.get(`streamerIcon`);
+		}
+		return {streamerIcon, streamerIconLastCheckedAt};
+	} catch(error) {
+		console.log(`getStreamerIcon error\n${error}`);
 	}
-	return {streamerIcon, streamerIconLastCheckedAt};
+	
 }
 
 async function getTempInfo(client, guildId, streamerUsername) {
@@ -348,8 +356,13 @@ async function storeTempInfo(client, guildId, streamerUsername, channelId, strea
 }
 
 async function deleteTempData(client, guildId, streamerUsername) {
-	let tempDB = await client.dbs.temp.findOne({ where: { guildId: `${guildId}`, streamerUsername: `${streamerUsername}` }});
-	if(tempDB) {tempDB.destroy();}
+	try {
+		let tempDB = await client.dbs.temp.findOne({ where: { guildId: `${guildId}`, streamerUsername: `${streamerUsername}` }});
+		if(tempDB) {tempDB.destroy();}
+	} catch(error) {
+		console.log(`deleteTempData\n${error}`);
+	}
+	
 }
 
 async function loadPreviousSubscriptions(client) {
