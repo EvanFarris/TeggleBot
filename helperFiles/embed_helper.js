@@ -55,9 +55,10 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 	}
 	try{
 		if(liveStream) {
-			lsEmbed.setTitle(liveStream.title)
-				.setDescription(liveStream.gameName)
-				.setImage(liveStream.getThumbnailUrl(320, 180));
+			lsEmbed.setTitle(liveStream.title);
+			if(liveStream.gameName){lsEmbed.setDescription(liveStream.gameName);}
+			const thumbnailUrl = liveStream.getThumbnailUrl(320,180);
+			if(thumbnailUrl){lsEmbed.setImage(thumbnailUrl);}
 		}
 	} catch(error) {
 		console.log(`~~createLiveStreamEmbed~~\n${error}`);
@@ -67,8 +68,9 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 }
 
 function sleep(milliseconds) {
-	const stopTime = Date.now() + milliseconds;
 	let currentTime = Date.now();
+	const stopTime = currentTime + milliseconds;
+	
 	while(currentTime < stopTime){
 		currentTime = Date.now();
 	}
