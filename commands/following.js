@@ -17,7 +17,7 @@ module.exports = {
 			if(dbresult) {
 				numStreamers = dbresult.numStreamers;
 				streamersInfo = JSON.parse(dbresult.streamersInfo);
-				twitchStreamerNames = streamersInfo.displayNames;
+				twitchStreamerNames = streamersInfo.streamerDisplayNames;
 				twitchCustomMessages = streamersInfo.customMessages;	
 			}
 			const embedToSend = embedHelper.createFollowingEmbed(twitchStreamerNames, twitchCustomMessages, guildName, guildIcon, numStreamers);

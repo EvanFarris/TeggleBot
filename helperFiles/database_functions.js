@@ -150,7 +150,7 @@ async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, str
 
 		if(updatedRows == null) {
 			numSubbed += (-1) ** isDeletion;
-			jsonParsed  = JSON.stringify({"names" : jsonNames, "websites" : jsonWebsites, "channels" : jsonChannels, "streamerIds" : jsonIds });
+			jsonParsed  = JSON.stringify({"names" : jsonNames, "websites" : jsonWebsites, "channels" : jsonChannels, "streamerIds" : jsonIds, "customMessages" : jsonCustomMessages, "streamerDisplayNames" : jsonDisplayNames});
 			updatedRows = await interaction.client.dbs.guildsubs.update({streamersInfo: jsonParsed, numStreamers : numSubbed}, {where: {guildId: `${interaction.guildId}`}});
 		}		
 		
