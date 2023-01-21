@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('tb_deletesubs')
+		.setName('tb_dev_deleteallsubs')
 		.setDescription('Deletes all subscriptions'),
 	async execute(interaction) {
 		console.log("Deleting all eventsub subscriptions");

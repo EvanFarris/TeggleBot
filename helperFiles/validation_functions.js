@@ -1,4 +1,4 @@
-const embedHelper = require(`./embed_helper.js`);
+const embedHelper = require(`./embed_functions.js`);
 const embeddedTitle = `TeggleBot Subscribe Results`;
 module.exports = {
 	isValidTwitchUsername,

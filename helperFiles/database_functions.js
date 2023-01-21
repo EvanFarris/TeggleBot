@@ -1,5 +1,5 @@
-const embedHelper = require(`./embed_helper.js`);
-const embeddedTitle = `TeggleBot Subscribe Results`;
+const embedHelper = require(`./embed_functions.js`);
+
 const maxSubscribedTo = 5;
 module.exports = {
 	addFollowerToTwitchStreamer,
@@ -89,9 +89,9 @@ async function updateTwitchStreamer(client, streamerAsJSON, channelId, streamerI
 	}
 }
 
-async function createGuildSubs(interaction, streamerUsername, streamerId, website, channelId) {
+async function createGuildSubs(interaction, streamerUsername, streamerDisplayName, streamerId, website, channelId, customMessage) {
 	try {
-		let jsonStreamers = JSON.stringify({ "names" : [streamerUsername], "websites" : [website], "channels" : [channelId], "streamerIds" : [streamerId] });
+		let jsonStreamers = JSON.stringify({ "names" : [streamerUsername], "streamerDisplayNames" :[streamerDisplayName], "websites" : [website], "channels" : [channelId], "streamerIds" : [streamerId], "customMessages" : [customMessage] });
 		try {
 			const dbEntryInserted = await interaction.client.dbs.guildsubs.create({
 				guildId: `${interaction.guildId}`,
@@ -110,29 +110,34 @@ async function createGuildSubs(interaction, streamerUsername, streamerId, websit
 			
 }
 
-async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, channelId, isDeletion) {
+async function updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerDisplayName, streamerId, website, channelId, customMessage, isDeletion) {
 	try {
 		let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
 		let jsonNames = jsonParsed.names;
+		let jsonDisplayNames = jsonParsed.streamerDisplayNames;
+		let jsonCustomMessages = jsonParsed.customMessages;
 		let jsonWebsites = jsonParsed.websites;
 		let jsonChannels = jsonParsed.channels;
 		let jsonIds = jsonParsed.streamerIds;
-
 		let numSubbed = gs_tableEntry.get(`numStreamers`);
 		let updatedRows = null;
 
 		if(!isDeletion) {
 			jsonNames.push(streamerUsername);
+			jsonDisplayNames.push(streamerDisplayName);
 			jsonWebsites.push(website);
 			jsonChannels.push(channelId);
+			jsonCustomMessages.push(customMessage);
 			jsonIds.push(streamerId);	
 		} else {
 			for(i = 0; i < jsonNames.length; i++) {
 				if (jsonNames[i] == streamerUsername && jsonWebsites[i] == website) {
 					if(numSubbed - 1 != 0 ) {
 						jsonNames.splice(i,1);
+						jsonDisplayNames.splice(i,1);
 						jsonWebsites.splice(i,1);
 						jsonChannels.splice(i,1);
+						jsonCustomMessages.splice(i,1);
 						jsonIds.splice(i,1);
 						break;  
 					} else {
@@ -226,10 +231,6 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 							else {channel.send({embeds: [embed]});}
 						} catch (error) {
 							console.log(`Error sending notification\n${error}`);
-							/*
-							channelsToNotify.splice(i,1);
-							customMessages.splice(i,1);
-							i--;*/
 						}
 					} 
 				}
@@ -241,10 +242,6 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 						if(channel) {channel.send(msg);}
 					} catch (error) {
 						console.log(`Error sending notification\n${error}`);
-						/*
-						channelsToNotify.splice(i,1);
-						customMessages.splice(i,1);
-						i--;*/
 					}	
 				}
 			}

@@ -6,7 +6,9 @@ module.exports = {
 	createLiveStreamEmbed,
 	getSelectMenu,
 	decomposeSelected,
-	createEmbedWithButtons
+	createEmbedWithButtons,
+	sleep,
+	createFollowingEmbed
 }
 
 
@@ -19,15 +21,15 @@ function createEmbed(title, description) {
 }
 
 
-async function createEmbedComplicated(streamerUsername, website, streamerDisplayName, streamerDescription, streamerIcon) {
+async function createEmbedComplicated(streamerUsername, streamerDisplayName, streamerDescription, streamerIcon) {
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#0099ff`)
-		.setTitle(`Retrieved ${streamerDisplayName} from the ${website} API`)
+		.setTitle(`Retrieved ${streamerDisplayName} from Twitch.tv's API`)
 		.setDescription(`Is this the correct streamer?`);
 
 	if(website == "twitch") {
 		if(streamerDescription == "") {streamerDescription = " ";}
-		embeddedMessage.setTitle(`Is this the correct streamer? (${streamerUsername})`)
+		embeddedMessage.setTitle(`Is this the correct streamer? (${streamerDisplayName})`)
 			.setImage(streamerIcon)
 			.setURL(`https://twitch.tv/${streamerUsername}`)
 			.setDescription(streamerDescription);
@@ -36,20 +38,23 @@ async function createEmbedComplicated(streamerUsername, website, streamerDisplay
 	return embeddedMessage;
 }
 
+//Creates the embed for live stream notifications. 
 async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 	let liveStream = null;
 	const lsEmbed = new EmbedBuilder()
 		.setColor(`#0099ff`)
-		.setTitle(`Stream Title`)
-		.setDescription(`Stream Description`)
+		.setTitle(`${streamEvent.broadcasterName}'s stream`)
+		.setDescription(`No game selected...`)
 		.setURL(`https://twitch.tv/${streamEvent.broadcasterName}`)
 		.setAuthor({name: streamEvent.broadcasterDisplayName , iconURL: streamerIcon})
-		.setTimestamp();
+		.setTimestamp()
+		.setImage(`https://static-cdn.jtvnw.net/previews-ttv/live_user_${streamEvent.broadcasterName}-320x180.jpg?r=${Date.now()}`)
+		.addFields({name: `Link to VOD (If it exists)`, value: `[Click here](https://twitch.tv/videos/${streamEvent.id})`});
 	let maxAttempts = 5;
 	while(!liveStream && maxAttempts > 0) {
 		liveStream = await client.twitchAPI.streams.getStreamByUserId(`${streamEvent.broadcasterId}`);
 		if(!liveStream){
-			sleep(5000);
+			await sleep(5000);
 			maxAttempts--;
 		}
 	}
@@ -57,8 +62,6 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 		if(liveStream) {
 			lsEmbed.setTitle(liveStream.title);
 			if(liveStream.gameName){lsEmbed.setDescription(liveStream.gameName);}
-			const thumbnailUrl = liveStream.getThumbnailUrl(320,180);
-			if(thumbnailUrl){lsEmbed.setImage(thumbnailUrl);}
 		}
 	} catch(error) {
 		console.log(`~~createLiveStreamEmbed~~\n${error}`);
@@ -67,7 +70,7 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 	return lsEmbed;
 }
 
-function sleep(milliseconds) {
+async function sleep(milliseconds) {
 	let currentTime = Date.now();
 	const stopTime = currentTime + milliseconds;
 	
@@ -112,14 +115,35 @@ async function createEmbedWithButtons(interaction, streamerUsername, streamerDis
 	const actionRow = new ActionRowBuilder()
 		.addComponents(
 				new ButtonBuilder()
-					.setCustomId('tb_subscribe_yes')
-					.setLabel(`Yes (Subscribe)`)
+					.setCustomId('follow_yes')
+					.setLabel(`Yes (Follow)`)
 					.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
-					.setCustomId(`tb_subscribe_no`)
+					.setCustomId(`follow_no`)
 					.setLabel(`No`)
 					.setStyle(ButtonStyle.Secondary),
 		);
-	let replyEmbedded = await createEmbedComplicated(streamerUsername, website, streamerDisplayName, streamerDescription, streamerIcon);
-	return { actionRow, replyEmbedded };
+	let embedToSend = await createEmbedComplicated(streamerUsername, streamerDisplayName, streamerDescription, streamerIcon);
+	return { actionRow, embedToSend };
+}
+
+function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages, guildName, guildIcon, numStreamers) {
+	const embeddedMessage = new EmbedBuilder()
+		.setColor(`#0099ff`)
+		.setTitle(`Streamers that ${guildName} is subscribed to (/following)`)
+		.setDescription(`You are subscribed to ${numStreamers} streamers.`);
+		
+		if(guildIcon != null) {
+			embeddedMessage.setThumbnail(`${guildIcon}`);
+		}
+		
+		if(numStreamers == 0) {
+			embeddedMessage.setDescription(`You are not subscribed to anyone.`);
+		}
+
+		for(i = 0; i < numStreamers; i++) {
+			embeddedMessage.addFields({name: twitchStreamerNames[i], value: twitchStreamerCustomMessages[i]});
+		}
+
+		return embeddedMessage;
 }

@@ -1,16 +1,14 @@
 const { SlashCommandBuilder, InteractionType, ChannelType, ComponentType} = require('discord.js');
 
-const wait = require(`node:timers/promises`).setTimeout;
-
-const embeddedTitle = `TeggleBot Subscribe Results`;
-const embedHelper = require('../helperFiles/embed_helper.js');
+const embeddedTitle = `Follow Results`;
+const embedHelper = require('../helperFiles/embed_functions.js');
 const dbHelper = require(`../helperFiles/database_functions.js`);
 const validationHelper = require(`../helperFiles/validation_functions.js`);
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('tb_subscribe')
-		.setDescription('Subscribe to a streamer.')
+		.setName('follow')
+		.setDescription('Follow a streamer.')
 		.addStringOption(option =>
 			option.setName('url')
 			.setDescription('The url to the streamer you want to subscribe to.')
@@ -52,9 +50,9 @@ module.exports = {
 			await dbHelper.storeTempInfo(interaction.client, interaction.guildId, streamerUsername, channel.id, streamerId, streamerDisplayName, customMessage);	
 			
 			//Create the embed and ask the guild if the streamer is the right one.
-			const { actionRow, replyEmbedded } = await embedHelper.createEmbedWithButtons(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon);	
-			await askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername, actionRow, replyEmbedded);
-		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_yes") {
+			const { actionRow, embedToSend } = await embedHelper.createEmbedWithButtons(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon);	
+			await askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername, actionRow, embedToSend);
+		} else if (interaction.isButton() && interaction.customId == "follow_yes") {
 			//This is where the code returns to if the user clicks the yes button.
 			//Get the streamer's data back from the embed and the temp database.
 			let { streamerUsername, website, streamerId, streamerDisplayName, streamerAsJSON, gs_tableEntry, streamerDescription, streamerIcon, customMessage, channelId } = await getFromEmbedded(interaction, false);
@@ -63,9 +61,9 @@ module.exports = {
 			let gs_succ = false, ts_succ = false;
 			
 			if(gs_tableEntry != null) {
-				gs_succ = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerId, website, channelId, false);					
+				gs_succ = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, streamerDisplayName, streamerId, website, channelId, customMessage, false);					
 			} else {
-				gs_succ = await dbHelper.createGuildSubs(interaction, streamerUsername, streamerId, website, channelId);
+				gs_succ = await dbHelper.createGuildSubs(interaction, streamerUsername, streamerDisplayName, streamerId, website, channelId, customMessage);
 			} 
 
 			//Update TWITCH_STREAMERS table. 
@@ -85,7 +83,7 @@ module.exports = {
 			}
 			
 			interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
-		} else if (interaction.isButton() && interaction.customId == "tb_subscribe_no") {
+		} else if (interaction.isButton() && interaction.customId == "follow_no") {
 			//Clean up the temporary table's data 
 			let streamerUsername = getFromEmbedded(interaction, true);
 			await dbHelper.deleteTempData(interaction.client, interaction.guildId, streamerUsername);
@@ -112,19 +110,19 @@ async function getFromEmbedded(interaction, removeTempData) {
 
 //Sends the message to the user, sets up a collector to restrict the interaction to only last for 15 seconds
 //Also cleans up the temporary data if the button is not responded to.
-async function askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername, actionRow, replyEmbedded) {
+async function askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername, actionRow, embedToSend) {
 	try {
-		await interaction.reply({ ephemeral: true, embeds: [replyEmbedded], components: [actionRow] });
+		await interaction.reply({ ephemeral: true, embeds: [embedToSend], components: [actionRow] });
 	} catch (error) {}
 			
-	const filter = i => i.customId == "tb_subscribe_yes" || i.customId == "tb_subscribe_no";
+	const filter = i => i.customId == "follow_yes" || i.customId == "follow_no";
 	const collector = interaction.channel.createMessageComponentCollector({ filter, time: 15000 });
 				
 	try {
 		collector.on(`collect`, async i => {
 			actionRow.components[0].setDisabled(true);
 			actionRow.components[1].setDisabled(true);
-			interaction.editReply({ephemeral: true, embeds: [replyEmbedded], components: [actionRow]});
+			interaction.editReply({ephemeral: true, embeds: [embedToSend], components: [actionRow]});
 		});
 
 		collector.on(`end`, collected => {
@@ -133,7 +131,7 @@ async function askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername,
 			}
 			actionRow.components[0].setDisabled(true);
 			actionRow.components[1].setDisabled(true);
-			interaction.editReply({ephemeral: true, embeds: [replyEmbedded], components: [actionRow]});
+			interaction.editReply({ephemeral: true, embeds: [embedToSend], components: [actionRow]});
 		});
 	} catch (error) {}
 }

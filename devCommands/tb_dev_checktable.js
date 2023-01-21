@@ -5,8 +5,8 @@ const { SlashCommandBuilder } = require('discord.js');
 */
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('tb_checktable')
-		.setDescription('Check table in the database')
+		.setName('tb_dev_checktable')
+		.setDescription('Check a table in the database')
 		.addStringOption(option =>
 			option.setName('tablename')
 			.setDescription('Name of the table you want to check.')

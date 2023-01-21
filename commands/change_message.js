@@ -1,16 +1,15 @@
 const { SlashCommandBuilder, InteractionType, ComponentType } = require('discord.js');
-const embedHelper = require(`../helperFiles/embed_helper.js`);
+const embedHelper = require(`../helperFiles/embed_functions.js`);
 const dbHelper = require(`../helperFiles/database_functions.js`);
 const validationHelper = require(`../helperFiles/validation_functions.js`);
 const embeddedTitle = `TeggleBot Change Message Results`;
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('tb_changemessage')
+		.setName('change_message')
 		.setDescription(`Change the custom message that gets sent with a notification`)
 		.addStringOption(option =>
 			option.setName('message')
-			.setDescription('The new message you want to send with the streamer notification.')
-			.setRequired(true)),
+			.setDescription('The new message you want to send with the streamer notification.')),
 	async execute(interaction) {
 		if(interaction.type === InteractionType.ApplicationCommand) {
 			const customMessage = interaction.options.getString(`message`);
@@ -20,7 +19,7 @@ module.exports = {
 				let description = "You are not subscribed to anyone.";
 				return interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 			};
-			const selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `tb_changemessage`);
+			const selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `change_message`);
 			
 			interaction.client.mapMessages.set(interaction.guildId, customMessage);
 			interaction.reply({content: firstResponseMessage, ephemeral: true, components: [selectMenu]});
