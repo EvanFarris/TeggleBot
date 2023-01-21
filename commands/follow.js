@@ -40,7 +40,7 @@ module.exports = {
 
 			//Get gs_tableEntry for future use, and check to see if the guild is already subscribed to the streamer it's asking for.
 			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
-			if(!dbHelper.checkGuildSubs(interaction, gs_tableEntry, streamerUsername, website, embeddedTitle)) {return;}
+			if(!(await dbHelper.checkGuildSubs(interaction, gs_tableEntry, streamerUsername, website, embeddedTitle))) {return;}
 
 			//Check to see if the streamer actually exists, and retrieve relevant information if they do.
 			const { streamerAsJSON, streamerId, streamerDisplayName, streamerDescription, streamerIcon} = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
