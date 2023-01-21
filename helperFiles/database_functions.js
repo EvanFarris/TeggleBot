@@ -383,10 +383,28 @@ async function loadPreviousSubscriptions(client) {
 	}
 }
 
-async function updateCustomMessage(client, streamerAsJSON, streamerId, channelId, customMessage) {
+async function updateCustomMessage(client, gs_tableEntry, streamerAsJSON, streamerId, channelId, customMessage) {
 	let followersParsed = JSON.parse(streamerAsJSON.get(`followers`));
 	let streamerFollowers = followersParsed.followers;
 	let customMessages = followersParsed.customMessages;
+
+	const streamerName = streamerAsJSON.streamerUsername;
+	const streamersInfo = gs_tableEntry.streamersInfo;
+	const streamerNames = streamersInfo.names;
+	const streamerMessages = streamersInfo.customMessages;
+	const streamerDisplayNames = streamersInfo.streamerDisplayNames;
+	const streamerWebsites = streamersInfo.websites;
+	const streamerChannels = streamersInfo.channels;
+	const streamerIds = streamersInfo.streamerIds;
+
+	for(i = 0; i < streamerNames.length; i++) {
+		if(streamerNames[i] == streamerName) {
+			let stringifiedInfo = JSON.stringify("names": streamerNames, "customMessages": streamerMessages, "streamerDisplayNames" : streamerDisplayNames, "websites": streamerWebsites, "channels": streamerChannels, "streamerIds": streamerIds);
+			await client.dbs.guildsubs.update({"streamersInfo" : stringifiedInfo}, {where: {guildId: client.guildId}});
+			break;
+		}
+	}
+	
 	for(i = 0; i < streamerFollowers.length; i++) {
 		if(streamerFollowers[i] == channelId) {
 			customMessages[i] = customMessage;

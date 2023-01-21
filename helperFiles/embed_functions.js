@@ -46,7 +46,7 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 		.setURL(`https://twitch.tv/${streamEvent.broadcasterName}`)
 		.setAuthor({name: streamEvent.broadcasterDisplayName , iconURL: streamerIcon})
 		.setTimestamp()
-		.setImage(`https://static-cdn.jtvnw.net/previews-ttv/live_user_${streamEvent.broadcasterName}-320x180.jpg?r=${Date.now()}`)
+		//.setImage(`https://static-cdn.jtvnw.net/previews-ttv/live_user_${streamEvent.broadcasterName}-320x180.jpg?r=${Date.now()}`)
 		.addFields({name: `Link to VOD (If it exists)`, value: `[Click here](https://twitch.tv/videos/${streamEvent.id})`});
 	let maxAttempts = 5;
 	while(!liveStream && maxAttempts > 0) {
@@ -59,6 +59,8 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 	try{
 		if(liveStream) {
 			lsEmbed.setTitle(liveStream.title);
+			let img = liveStream.getThumbnailUrl(320,180) + `?r=${Date.now()}`;
+			lsEmbed.setImage(img);
 			if(liveStream.gameName){lsEmbed.setDescription(liveStream.gameName);}
 		}
 	} catch(error) {
