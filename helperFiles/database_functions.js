@@ -399,12 +399,12 @@ async function updateCustomMessage(client, gs_tableEntry, streamerAsJSON, stream
 
 	for(i = 0; i < streamerNames.length; i++) {
 		if(streamerNames[i] == streamerName) {
-			let stringifiedInfo = JSON.stringify("names": streamerNames, "customMessages": streamerMessages, "streamerDisplayNames" : streamerDisplayNames, "websites": streamerWebsites, "channels": streamerChannels, "streamerIds": streamerIds);
+			let stringifiedInfo = JSON.stringify({"names": streamerNames, "customMessages": streamerMessages, "streamerDisplayNames" : streamerDisplayNames, "websites": streamerWebsites, "channels": streamerChannels, "streamerIds": streamerIds});
 			await client.dbs.guildsubs.update({"streamersInfo" : stringifiedInfo}, {where: {guildId: client.guildId}});
 			break;
 		}
 	}
-	
+
 	for(i = 0; i < streamerFollowers.length; i++) {
 		if(streamerFollowers[i] == channelId) {
 			customMessages[i] = customMessage;
