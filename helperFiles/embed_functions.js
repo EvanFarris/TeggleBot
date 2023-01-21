@@ -27,13 +27,11 @@ async function createEmbedComplicated(streamerUsername, streamerDisplayName, str
 		.setTitle(`Retrieved ${streamerDisplayName} from Twitch.tv's API`)
 		.setDescription(`Is this the correct streamer?`);
 
-	if(website == "twitch") {
-		if(streamerDescription == "") {streamerDescription = " ";}
-		embeddedMessage.setTitle(`Is this the correct streamer? (${streamerDisplayName})`)
-			.setImage(streamerIcon)
-			.setURL(`https://twitch.tv/${streamerUsername}`)
-			.setDescription(streamerDescription);
-	} 
+	if(streamerDescription == "") {streamerDescription = " ";}
+	embeddedMessage.setTitle(`Is this the correct streamer? (${streamerDisplayName})`)
+		.setImage(streamerIcon)
+		.setURL(`https://twitch.tv/${streamerUsername}`)
+		.setDescription(streamerDescription);
 
 	return embeddedMessage;
 }
