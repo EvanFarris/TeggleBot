@@ -142,7 +142,12 @@ function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages,
 		}
 
 		for(i = 0; i < numStreamers; i++) {
-			embeddedMessage.addFields({name: twitchStreamerNames[i], value: twitchStreamerCustomMessages[i]});
+			if(twitchStreamerCustomMessages[i] == ""){
+				embeddedMessage.addFields({name: twitchStreamerNames[i], value: `No message will be sent.`});
+			} else {
+				embeddedMessage.addFields({name: twitchStreamerNames[i], value: twitchStreamerCustomMessages[i]});
+			}
+			
 		}
 
 		return embeddedMessage;

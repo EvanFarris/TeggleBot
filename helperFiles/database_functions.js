@@ -389,7 +389,8 @@ async function updateCustomMessage(client, gs_tableEntry, streamerAsJSON, stream
 	let customMessages = followersParsed.customMessages;
 
 	const streamerName = streamerAsJSON.streamerUsername;
-	const streamersInfo = gs_tableEntry.streamersInfo;
+	
+	const streamersInfo = JSON.parse(gs_tableEntry.streamersInfo);
 	const streamerNames = streamersInfo.names;
 	const streamerMessages = streamersInfo.customMessages;
 	const streamerDisplayNames = streamersInfo.streamerDisplayNames;
