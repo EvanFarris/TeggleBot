@@ -77,7 +77,7 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 			const vodCreationTime = new Date(vodObject.creationDate);
 
 			if(currentTime - vodCreationTime < 1000 * 60 * 3) {
-				lsEmbed.addFields({name: `Link to VOD`, value: `[Click here](https://twitch.tv/videos/${vodObject.url})`});
+				lsEmbed.addFields({name: `Link to VOD`, value: `[Click here](${vodObject.url})`});
 			}
 		}
 	} catch(error) {
