@@ -8,20 +8,26 @@ module.exports = {
 
 		if (subscriptions){
 			const streamers = JSON.parse(subscriptions.get(`streamersInfo`));
-			let streamerNames = streamers.names;
-			let streamerWebsites = streamers.websites;
-			let streamerChannels = streamers.channels;
+			let streamerChannels = streamers.channelIds;
 			let streamerIds = streamers.streamerIds;
+			let streamerNames = streamers.streamerUserNames;
+			let streamerDisplayNames = streamers.streamerDisplayNames;
+			let customMessages = streamers.customMessages;
+			let streamerWebsites = streamers.streamerWebsites;
+
 			let initialSubscriptions = subscriptions.get(`numStreamers`);
 			let twitchStreamerEntry = null;
+
 			for(i = 0; i < streamerNames.length; i++) {
 				if (channel.id == streamerChannels[i]) {
 					twitchStreamerEntry = await validationHelper.checkTwitchStreamerExistsLocal(channel.client, streamerNames[i]);
 					await dbHelper.deleteFollowerFromTwitchStreamer(channel.client, twitchStreamerEntry, streamerIds[i], channel.id);
-					streamerNames.splice(i,1);
-					streamerWebsites.splice(i,1);
 					streamerChannels.splice(i,1);
 					streamerIds.splice(i,1);
+					streamerNames.splice(i,1);
+					streamerDisplayNames.splice(i,1);
+					customMessages.splice(i,1);
+					streamerWebsites.splice(i,1);
 					i--;
 				}
 			}
@@ -29,8 +35,8 @@ module.exports = {
 			if(streamerNames.length == 0) {
 				await subscriptions.destroy();
 			} else if(initialSubscriptions != streamerNames.length) {
-				const streamersStringified = JSON.stringify({"names" : streamerNames, "websites" : streamerWebsites, "channels" : streamerChannels, "streamerIds" : streamerIds });
-				await channel.client.dbs.guildsubs.update({streamersInfo: streamersStringified, numStreamers : streamerNames.length}, {where: {guildId: `${channel.guildId}`}});
+				const streamersStringified = JSON.stringify({ "channelIds" : streamerChannels, "streamerIds" : streamerIds, "streamerUserNames" : streamerNames, "streamerDisplayNames" : streamerDisplayNames, "customMessages" : customMessages, "streamerWebsites" : streamerWebsites});
+				await subcriptions.update({streamersInfo: streamersStringified, numStreamers : streamerNames.length});
 			}
 		}
 	}

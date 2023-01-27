@@ -19,7 +19,7 @@ module.exports = {
 
 			//Create the select menu to display
 			let selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `unfollow_select_menu`);
-
+			//TODO: Implement a collector like in /follow, maybe add a map to not allow multiple functions from going on?.
 			interaction.reply({content: `Choose a person to unsubscribe from`, ephemeral: true, components: [selectMenu] });
 				
 		} else if(interaction.isStringSelectMenu()) {
@@ -43,7 +43,7 @@ module.exports = {
 				const description = `You have successfully unfollowed ${streamerAsJSON.get(`streamerDisplayName`)}`; 		
 				return interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 			} else {
-				const description = `Some voodoo magic happened, but you shouldn't be subscribed to the streamer.`;
+				const description = `Some voodoo magic happened, but you shouldn't be following the streamer anymore.`;
 				return interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 			}
 

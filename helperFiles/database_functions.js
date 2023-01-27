@@ -53,7 +53,9 @@ async function deleteFollowerFromGuildSubs(client, gs_tableEntry, guildId, strea
 }
 
 async function deleteFollowerFromTwitchStreamer(client, streamerAsJSON, streamerId, channelId) {
-	return await updateTwitchStreamer(client, streamerAsJSON, channelId, streamerId, null, true);
+	if(streamerAsJSON){
+		return await updateTwitchStreamer(client, streamerAsJSON, channelId, streamerId, null, true);
+	}
 }
 
 async function deleteTempInfo(client, guildId, streamerUsername) {
@@ -144,12 +146,12 @@ async function updateCustomMessage(client, gs_tableEntry, streamerAsJSON, guildI
 	const streamerNames = streamersInfo.streamerUserNames;
 	const streamerDisplayNames = streamersInfo.streamerDisplayNames;
 	let streamerMessages = streamersInfo.customMessages;
-	const streamerWebsites = streamersInfo.websites;
+	const streamerWebsites = streamersInfo.streamerWebsites;
 
 	for(i = 0; i < streamerNames.length; i++) {
 		if(streamerNames[i] == streamerName) {
 			streamerMessages[i] = customMessage;
-			let stringifiedInfo = JSON.stringify({"channelIds": streamerChannels, "streamerIds": streamerIds, "streamerUserNames": streamerNames, "streamerDisplayNames" : streamerDisplayNames, "customMessages": streamerMessages,  "websites": streamerWebsites });
+			let stringifiedInfo = JSON.stringify({"channelIds": streamerChannels, "streamerIds": streamerIds, "streamerUserNames": streamerNames, "streamerDisplayNames" : streamerDisplayNames, "customMessages": streamerMessages,  "streamerWebsites": streamerWebsites });
 			await client.dbs.guildsubs.update({"streamersInfo" : stringifiedInfo}, {where: {guildId: guildId}});
 			break;
 		}
@@ -232,7 +234,7 @@ async function updateTwitchStreamer(client, streamerAsJSON, channelId, streamerI
 function checkIfGuildIsAlreadySubscribedToStreamer(gs_tableEntry, streamerUsername, website) {
 	let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
 	let jsonNames = jsonParsed.streamerUserNames;
-	let jsonWebsites = jsonParsed.websites;
+	let jsonWebsites = jsonParsed.streamerWebsites;
 	let jsonIds = jsonParsed.streamerIds;
 	let wasFound = false;
 	let streamerId = null;
@@ -357,7 +359,7 @@ async function getStreamerIcon(client, streamerFromDB, streamerId, currentTime) 
 
 async function createGuildSubs(client, guildId, channelId, streamerId, streamerUsername, streamerDisplayName, customMessage, website) {
 	try {
-		let jsonStreamers = JSON.stringify({ "channelIds" : [channelId], "streamerIds" : [streamerId], "streamerUserNames" : [streamerUsername], "streamerDisplayNames" :[streamerDisplayName], "customMessages" : [customMessage], "websites" : [website] });
+		let jsonStreamers = JSON.stringify({ "channelIds" : [channelId], "streamerIds" : [streamerId], "streamerUserNames" : [streamerUsername], "streamerDisplayNames" :[streamerDisplayName], "customMessages" : [customMessage], "streamerWebsites" : [website] });
 		try {
 			const dbEntryInserted = await client.dbs.guildsubs.create({
 				guildId: `${guildId}`,
@@ -379,32 +381,34 @@ async function createGuildSubs(client, guildId, channelId, streamerId, streamerU
 async function updateGuildSubs(client, gs_tableEntry, guildId, channelId, streamerId, streamerUsername, streamerDisplayName, customMessage, website, isDeletion) {
 	try {
 		let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
+		
+		let jsonChannels = jsonParsed.channelIds;
+		let jsonIds = jsonParsed.streamerIds;
 		let jsonNames = jsonParsed.streamerUserNames;
 		let jsonDisplayNames = jsonParsed.streamerDisplayNames;
 		let jsonCustomMessages = jsonParsed.customMessages;
-		let jsonWebsites = jsonParsed.websites;
-		let jsonChannels = jsonParsed.channelIds;
-		let jsonIds = jsonParsed.streamerIds;
+		let jsonWebsites = jsonParsed.streamerWebsites;
+
 		let numSubbed = gs_tableEntry.get(`numStreamers`);
 		let updatedRows = null;
 
 		if(!isDeletion) {
+			jsonChannels.push(channelId);
+			jsonIds.push(streamerId);	
 			jsonNames.push(streamerUsername);
 			jsonDisplayNames.push(streamerDisplayName);
-			jsonWebsites.push(website);
-			jsonChannels.push(channelId);
 			jsonCustomMessages.push(customMessage);
-			jsonIds.push(streamerId);	
+			jsonWebsites.push(website);
 		} else {
 			for(i = 0; i < jsonNames.length; i++) {
 				if (jsonNames[i] == streamerUsername && jsonWebsites[i] == website) {
 					if(numSubbed - 1 != 0 ) {
+						jsonChannels.splice(i,1);
+						jsonIds.splice(i,1);
 						jsonNames.splice(i,1);
 						jsonDisplayNames.splice(i,1);
-						jsonWebsites.splice(i,1);
-						jsonChannels.splice(i,1);
 						jsonCustomMessages.splice(i,1);
-						jsonIds.splice(i,1);
+						jsonWebsites.splice(i,1);
 						break;  
 					} else {
 						//Delete entry from table
@@ -416,7 +420,7 @@ async function updateGuildSubs(client, gs_tableEntry, guildId, channelId, stream
 
 		if(updatedRows == null) {
 			numSubbed += (-1) ** isDeletion;
-			jsonParsed  = JSON.stringify({"channelIds" : jsonChannels, "streamerIds" : jsonIds, "streamerUserNames" : jsonNames, "streamerDisplayNames" : jsonDisplayNames, "customMessages" : jsonCustomMessages, "websites" : jsonWebsites});
+			jsonParsed  = JSON.stringify({"channelIds" : jsonChannels, "streamerIds" : jsonIds, "streamerUserNames" : jsonNames, "streamerDisplayNames" : jsonDisplayNames, "customMessages" : jsonCustomMessages, "streamerWebsites" : jsonWebsites});
 			updatedRows = await client.dbs.guildsubs.update({streamersInfo: jsonParsed, numStreamers : numSubbed}, {where: {guildId: `${guildId}`}});
 		}		
 		
