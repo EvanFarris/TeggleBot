@@ -8,7 +8,7 @@ module.exports = {
 	async execute(interaction) {
 		const information = `Guild Id: ${interaction.guildId}\nChannel Id: ${interaction.channelId}`;
 		const embed = embedHelper.createEmbed(`CheckId results`, information);
-		interaction.reply({embeds: [embed]});
+		interaction.reply({embeds: [embed], ephemeral: true});
 	},
 	
 };

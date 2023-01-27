@@ -24,44 +24,61 @@ function createEmbed(title, description) {
 async function createEmbedComplicated(streamerUsername, streamerDisplayName, streamerDescription, streamerIcon) {
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#0099ff`)
-		.setTitle(`Retrieved ${streamerDisplayName} from Twitch.tv's API`)
+		.setTitle(`Retrieved ${streamerDisplayName}`)
 		.setDescription(`Is this the correct streamer?`);
 
 	if(streamerDescription == "") {streamerDescription = " ";}
 	embeddedMessage.setTitle(`Is this the correct streamer? (${streamerDisplayName})`)
 		.setImage(streamerIcon)
-		.setURL(`https://twitch.tv/${streamerUsername}`)
-		.setDescription(streamerDescription);
+		.setURL(`https://twitch.tv/${streamerUsername}`);
+	if(streamerDescription){
+		embeddedMessage.setDescription(streamerDescription);
+	}
 
 	return embeddedMessage;
 }
 
 //Creates the embed for live stream notifications. 
 async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
-	let liveStream = null;
 	const lsEmbed = new EmbedBuilder()
 		.setColor(`#0099ff`)
 		.setTitle(`${streamEvent.broadcasterName}'s stream`)
-		.setDescription(`No game selected...`)
 		.setURL(`https://twitch.tv/${streamEvent.broadcasterName}`)
 		.setAuthor({name: streamEvent.broadcasterDisplayName , iconURL: streamerIcon})
-		.setTimestamp()
-		//.setImage(`https://static-cdn.jtvnw.net/previews-ttv/live_user_${streamEvent.broadcasterName}-320x180.jpg?r=${Date.now()}`)
-		.addFields({name: `Link to VOD (If it exists)`, value: `[Click here](https://twitch.tv/videos/${streamEvent.id})`});
-	let maxAttempts = 5;
-	while(!liveStream && maxAttempts > 0) {
-		liveStream = await client.twitchAPI.streams.getStreamByUserId(`${streamEvent.broadcasterId}`);
+		.setTimestamp();
+	
+	let liveStream = null;
+	let maxAttempts = 3;
+	let vod = null;
+	let vodFilter = {period: `day`, type: `archive`, first: 1};
+	while((!liveStream || !vod) && maxAttempts > 0) {
 		if(!liveStream){
+			liveStream = await client.twitchAPI.streams.getStreamByUserId(`${streamEvent.broadcasterId}`);
+		}
+		if(!vod){
+			vod = await client.twitchAPI.videos.getVideosByUser(streamEvent.broadcasterId, vodFilter);
+		}
+		if(!liveStream || !vod){
 			await sleep(5000);
 			maxAttempts--;
 		}
 	}
+
 	try{
 		if(liveStream) {
 			lsEmbed.setTitle(liveStream.title);
-			let img = liveStream.getThumbnailUrl(320,180) + `?r=${Date.now()}`;
-			lsEmbed.setImage(img);
-			if(liveStream.gameName){lsEmbed.setDescription(liveStream.gameName);}
+			if(liveStream.gameName){
+				lsEmbed.addFields({name: `Game`, value: liveStream.gameName});
+			}
+		}
+		if(vod) {
+			const vodObject = (vod.data)[0];
+			const currentTime = Date.now();
+			const vodCreationTime = new Date(vodObject.creationDate);
+
+			if(currentTime - vodCreationTime < 1000 * 60 * 3) {
+				lsEmbed.addFields({name: `Link to VOD`, value: `[Click here](https://twitch.tv/videos/${vodObject.url})`});
+			}
 		}
 	} catch(error) {
 		console.log(`~~createLiveStreamEmbed~~\n${error}`);
@@ -81,9 +98,9 @@ async function sleep(milliseconds) {
 
 function getSelectMenu(gs_tableEntry, customId) {
 	let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
-	let names = jsonParsed.names;
+	let names = jsonParsed.streamerUserNames;
 	let websites = jsonParsed.websites;
-	let channels = jsonParsed.channels;
+	let channels = jsonParsed.channelIds;
 	let streamerIds = jsonParsed.streamerIds;
 
 	let selectMenuOptions = new StringSelectMenuBuilder()
@@ -130,24 +147,23 @@ async function createEmbedWithButtons(interaction, streamerUsername, streamerDis
 function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages, guildName, guildIcon, numStreamers) {
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#0099ff`)
-		.setTitle(`Streamers that ${guildName} is subscribed to (/following)`)
-		.setDescription(`You are subscribed to ${numStreamers} streamers.`);
+		.setTitle(`Streamers that ${guildName} is following`)
+		.setDescription(`You are following ${numStreamers} streamers.`);
 		
 		if(guildIcon != null) {
 			embeddedMessage.setThumbnail(`${guildIcon}`);
 		}
 		
 		if(numStreamers == 0) {
-			embeddedMessage.setDescription(`You are not subscribed to anyone.`);
+			embeddedMessage.setDescription(`You are not following anyone.`);
 		}
 
 		for(i = 0; i < numStreamers; i++) {
 			if(twitchStreamerCustomMessages[i] == ""){
-				embeddedMessage.addFields({name: twitchStreamerNames[i], value: `No message will be sent.`});
+				embeddedMessage.addFields({name: twitchStreamerNames[i], value: `No custom message set.`});
 			} else {
 				embeddedMessage.addFields({name: twitchStreamerNames[i], value: twitchStreamerCustomMessages[i]});
 			}
-			
 		}
 
 		return embeddedMessage;

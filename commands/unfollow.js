@@ -3,17 +3,12 @@ const { SlashCommandBuilder, InteractionType} = require('discord.js');
 const embedHelper = require('../helperFiles/embed_functions.js');
 const dbHelper = require(`../helperFiles/database_functions.js`);
 const validationHelper = require(`../helperFiles/validation_functions.js`);
-const embeddedTitle = `TeggleBot Unsubscribe Results`;
+const embeddedTitle = `TeggleBot Unfollow Results`;
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('unfollow')
 		.setDescription('Unfollow a streamer.'),
 	async execute(interaction) {
-		if(!interaction.memberPermissions.has(`ADMINISTRATOR`) && !interaction.memberPermissions.has(`MANAGE_WEBHOOKS`)) {
-			await interaction.reply('You must have either the Administrator permission or the Manage Webhooks permission to use this command.');
-			return;
-		}
-		
 		if(interaction.type === InteractionType.ApplicationCommand) {
 			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 			//If the guild isn't subscribed to anyone, return
@@ -34,22 +29,18 @@ module.exports = {
 
 			//Separate the chosen option into the four required information, use it to get the table information.
 			let {streamerUsername, website, streamerId, channelId} = embedHelper.decomposeSelected(selectedValue);
-			let {streamerAsJSON, gs_tableEntry} = await getFromDbs(interaction, streamerUsername, website);
+			let {gs_tableEntry, streamerAsJSON} = await getFromDbs(interaction, streamerUsername, website);
 
 			//Remove the streamer from the Guild's list, and then remove the guild from the streamer's list
 			let succeeded = false;
-			if(website == "twitch") {
-				let updatedRows = await dbHelper.updateGuildSubs(interaction, gs_tableEntry, streamerUsername, null, streamerId, website, channelId, true);
-				if(updatedRows == true) {
-					succeeded = await dbHelper.deleteFollowerFromTwitchStreamer(interaction.client, streamerAsJSON, streamerId, channelId);
-				}
 
-			} else { //Something went wrong, end the function.
-					return;
+			let updatedRows = await dbHelper.deleteFollowerFromGuildSubs(interaction.client, gs_tableEntry, interaction.guildId, streamerUsername, website);
+			if(updatedRows == true) {
+				succeeded = await dbHelper.deleteFollowerFromTwitchStreamer(interaction.client, streamerAsJSON, streamerId, channelId);
 			}
-
+			
 			if(succeeded == true) {
-				const description = `You have been successfully unsubscribed from ${streamerAsJSON.get(`streamerDisplayName`)}`; 		
+				const description = `You have successfully unfollowed ${streamerAsJSON.get(`streamerDisplayName`)}`; 		
 				return interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 			} else {
 				const description = `Some voodoo magic happened, but you shouldn't be subscribed to the streamer.`;
@@ -70,5 +61,5 @@ async function getFromDbs(interaction, streamerUsername, website) {
 			streamerAsJSON = await validationHelper.checkTwitchStreamerExistsLocal(interaction.client, streamerUsername);
 		}
 	}
-	return {streamerAsJSON, gs_tableEntry};
+	return { gs_tableEntry, streamerAsJSON};
 }

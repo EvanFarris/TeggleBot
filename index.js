@@ -75,7 +75,7 @@ async function main() {
 		streamerIcon: Sequelize.STRING,
 		streamerIconLastCheckedAt: Sequelize.STRING,
 		lastOnline: Sequelize.STRING, //For timed unsubscription purposes
-		followers: Sequelize.TEXT,	//JSON guild channelids to send out livestream notifications.
+		followersInfo: Sequelize.TEXT,	//JSON guild channelids to send out livestream notifications.
 	});
 
 	const SUB_TEMP = sequelize.define(`sub_temp`, {
@@ -95,7 +95,7 @@ async function main() {
 	client.dbs.temp = SUB_TEMP;
 	client.dbs.guildsubs.sync({force: force});
 	client.dbs.twitchstreamers.sync({force: force});
-	client.dbs.temp.sync({force: force});
+	client.dbs.temp.sync({force: true});
 	//Create a map and attach it to client. Initialize it in ready.js
 	client.hmap = new Map();
 	client.mapMessages = new Map();

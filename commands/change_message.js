@@ -35,7 +35,7 @@ module.exports = {
 			const {streamerAsJSON, gs_tableEntry} = await getFromDbs(interaction, streamerUsername, website);
 			let result = null;
 			if(streamerAsJSON) {
-				result = await dbHelper.updateCustomMessage(interaction.client, gs_tableEntry, streamerAsJSON, streamerId, channelId, customMessage);
+				result = await dbHelper.updateCustomMessage(interaction.client, gs_tableEntry, streamerAsJSON, interaction.guildId, channelId, streamerId, customMessage);
 			}
 			let description;
 			if(result) {
