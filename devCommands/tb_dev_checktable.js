@@ -5,8 +5,8 @@ const { SlashCommandBuilder } = require('discord.js');
 */
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('tb_checktable')
-		.setDescription('Check table in the database')
+		.setName('tb_dev_checktable')
+		.setDescription('Check a table in the database')
 		.addStringOption(option =>
 			option.setName('tablename')
 			.setDescription('Name of the table you want to check.')
@@ -32,7 +32,7 @@ module.exports = {
 				if(table_name == "TWITCH_STREAMERS") {
 					for(i = 0; i < rows.length; i++) {
 						obj = rows.at(i);
-						numFollowers = JSON.parse(obj.get("followers")).followers;
+						numFollowers = JSON.parse(obj.get("followersInfo")).followers;
 						result += `Username: ${obj.get("streamerUsername")}\nStreamer id: ${obj.get("streamerId")}\nLast online: ${obj.get("lastOnline")}\nNumber of Followers: ${numFollowers.length}\n\n`;
 					}
 				} else if(table_name == "GUILD_SUBS") {

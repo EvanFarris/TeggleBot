@@ -3,6 +3,11 @@ module.exports = {
 	name: 'interactionCreate',
 	execute(interaction) {
 		if(!interaction.isCommand() && !interaction.isButton() && !interaction.isStringSelectMenu()) return;
+		if(!interaction.memberPermissions.has(`Administrator`) && !interaction.memberPermissions.has(`ManageWebhooks`) && !interaction.memberPermissions.has(`ManageGuild`)) {
+			interaction.reply({content: 'You must have at least the Administrator, Manage Webhooks, or Manage Server permission to use this command.', ephemeral: true});
+			return;
+		}
+
 		if(interaction.isCommand()) {
 			const command = interaction.client.commands.get(interaction.commandName);
 			if(!command) return;
@@ -16,12 +21,12 @@ module.exports = {
 				interaction.reply({ content: `There was an error while executing this command!`, ephemeral: true});
 			}
 		} else {
-			if(interaction.customId == "tb_subscribe_yes" || interaction.customId == "tb_subscribe_no") {
-				interaction.client.commands.get("tb_subscribe").execute(interaction);
-			} else if (interaction.customId == "tb_unsub_select_menu") {
-				interaction.client.commands.get("tb_unsubscribe").execute(interaction);
-			} else if (interaction.customId == "tb_changemessage") {
-				interaction.client.commands.get("tb_changemessage").execute(interaction);
+			if(interaction.customId == "follow_yes" || interaction.customId == "follow_no") {
+				interaction.client.commands.get("follow").execute(interaction);
+			} else if (interaction.customId == "unfollow_select_menu") {
+				interaction.client.commands.get("unfollow").execute(interaction);
+			} else if (interaction.customId == "change_message") {
+				interaction.client.commands.get("change_message").execute(interaction);
 			}
 		}
 		

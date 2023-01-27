@@ -1,9 +1,9 @@
 const { SlashCommandBuilder } = require('discord.js');
-const embedHelper = require(`../helperFiles/embed_helper.js`);
+const embedHelper = require(`../helperFiles/embed_functions.js`);
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('tb_stats')
+		.setName('stats')
 		.setDescription('Get some stats about the bot'),
 	async execute(interaction) {
 		let numGuilds = interaction.client.guilds.cache.size;
