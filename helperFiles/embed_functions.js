@@ -14,7 +14,7 @@ module.exports = {
 
 function createEmbed(title, description) {
 	const embeddedMessage = new EmbedBuilder()
-		.setColor(`#0099ff`)
+		.setColor(`#474354`)
 		.setTitle(title)
 		.setDescription(description);
 	return embeddedMessage;
@@ -23,7 +23,7 @@ function createEmbed(title, description) {
 
 async function createEmbedComplicated(streamerUsername, streamerDisplayName, streamerDescription, streamerIcon) {
 	const embeddedMessage = new EmbedBuilder()
-		.setColor(`#0099ff`)
+		.setColor(`#474354`)
 		.setTitle(`Retrieved ${streamerDisplayName}`)
 		.setDescription(`Is this the correct streamer?`);
 
@@ -41,14 +41,14 @@ async function createEmbedComplicated(streamerUsername, streamerDisplayName, str
 //Creates the embed for live stream notifications. 
 async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 	const lsEmbed = new EmbedBuilder()
-		.setColor(`#0099ff`)
+		.setColor(`#474354`)
 		.setTitle(`${streamEvent.broadcasterName}'s stream`)
 		.setURL(`https://twitch.tv/${streamEvent.broadcasterName}`)
-		.setAuthor({name: streamEvent.broadcasterDisplayName , iconURL: streamerIcon})
+		.setAuthor({name: streamEvent.broadcasterDisplayName, icon: streamerIcon})
 		.setTimestamp();
 	
 	let liveStream = null;
-	let maxAttempts = 3;
+	let maxAttempts = 5;
 	let vod = null;
 	let vodFilter = {period: `day`, type: `archive`, first: 1};
 	while((!liveStream || !vod) && maxAttempts > 0) {
@@ -68,7 +68,7 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 		if(liveStream) {
 			lsEmbed.setTitle(liveStream.title);
 			if(liveStream.gameName){
-				lsEmbed.addFields({name: `Game`, value: liveStream.gameName});
+				lsEmbed.addFields({name: `Game`, value: liveStream.gameName, inline: true});
 			}
 		}
 		if(vod) {
@@ -77,7 +77,7 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 			const vodCreationTime = new Date(vodObject.creationDate);
 
 			if(currentTime - vodCreationTime < 1000 * 60 * 3) {
-				lsEmbed.addFields({name: `Link to VOD`, value: `[Click here](${vodObject.url})`});
+				lsEmbed.addFields({name: `Link to VOD`, value: `[Click here](${vodObject.url})`, inline: true});
 			}
 		}
 	} catch(error) {
@@ -99,7 +99,7 @@ async function sleep(milliseconds) {
 function getSelectMenu(gs_tableEntry, customId) {
 	let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
 	let names = jsonParsed.streamerUserNames;
-	let websites = jsonParsed.websites;
+	let websites = jsonParsed.streamerWebsites;
 	let channels = jsonParsed.channelIds;
 	let streamerIds = jsonParsed.streamerIds;
 
@@ -146,7 +146,7 @@ async function createEmbedWithButtons(interaction, streamerUsername, streamerDis
 
 function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages, guildName, guildIcon, numStreamers) {
 	const embeddedMessage = new EmbedBuilder()
-		.setColor(`#0099ff`)
+		.setColor(`#474354`)
 		.setTitle(`Streamers that ${guildName} is following`)
 		.setDescription(`You are following ${numStreamers} streamers.`);
 		

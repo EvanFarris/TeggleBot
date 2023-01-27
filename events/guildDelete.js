@@ -9,9 +9,9 @@ module.exports = {
 
 			if (subscriptions){
 				const streamers = JSON.parse(subscriptions.get(`streamersInfo`));
-				let streamerNames = streamers.names;
+				let streamerNames = streamers.streamerUserNames;
 				let streamerIds = streamers.streamerIds;
-				let streamerChannels = streamers.channels;
+				let streamerChannels = streamers.channelIds;
 				let twitchStreamerEntry;
 				for(i = 0; i < streamerNames.length; i++) {
 					twitchStreamerEntry = await validationHelper.checkTwitchStreamerExistsLocal(guild.client, streamerNames[i]);

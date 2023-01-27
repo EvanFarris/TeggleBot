@@ -95,7 +95,7 @@ async function getFromEmbedded(interaction, removeTempData) {
 	let gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 	let streamerAsJSON = await validationHelper.checkTwitchStreamerExistsLocal(interaction.client, streamerUsername);
 
-	return { gs_tableEntry, streamerAsJSON, channelId, streamerId, streamerUsername, streamerDisplayName, streamerDescription, streamerIcon, customMessage, website};
+	return { gs_tableEntry, streamerAsJSON, channelId, streamerId, streamerUsername, streamerDisplayName, streamerDescription, streamerIcon, customMessage, website };
 }
 
 //Sends the message to the user, sets up a collector to restrict the interaction to only last for 15 seconds
