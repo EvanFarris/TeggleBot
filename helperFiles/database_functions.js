@@ -315,9 +315,9 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 			
 			if(channelsToNotify.length != initialLength) {
 				let channelsUpdated = JSON.stringify({ "followers" : channelsToNotify, "customMessages" : customMessages});
-				client.dbs.twitchstreamers.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, followersInfo: `${channelsUpdated}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`}, {where: {streamerId: `${streamEvent.broadcasterId}`}});
+				dbEntry.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, followersInfo: `${channelsUpdated}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`});
 			} else {
-				client.dbs.twitchstreamers.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`}, {where: {streamerId: `${streamEvent.broadcasterId}`}});
+				dbEntry.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`});
 			}
 		} else {
 			console.log("Streamer Notification triggered, but streamer was not found.");

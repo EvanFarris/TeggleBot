@@ -77,7 +77,7 @@ module.exports = {
 			//Clean up the temporary table's data 
 			let streamerUsername = await getFromEmbedded(interaction, true);
 			await dbHelper.deleteTempInfo(interaction.client, interaction.guildId, streamerUsername);
-			interaction.update({components: []});
+			interaction.update({ephemeral: true});
 		}
 		
 	},
