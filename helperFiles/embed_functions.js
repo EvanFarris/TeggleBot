@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ComponentType  } = require('discord.js');
 const embeddedTitle = `TeggleBot Subscribe Results`;
 module.exports = {
 	createEmbed,
@@ -6,7 +6,8 @@ module.exports = {
 	getSelectMenu,
 	decomposeSelected,
 	createEmbedWithButtons,
-	createFollowingEmbed
+	createFollowingEmbed,
+	startCollector
 }
 
 //Basic embed
@@ -171,4 +172,22 @@ async function sleep(milliseconds) {
 	while(currentTime < stopTime){
 		currentTime = Date.now();
 	}
+}
+
+//Component collector for string select menus (unfollow.js, change_message.js)
+async function startCollector(interaction, customId){
+	const filter = i => i.customId == `${customId}`;
+	const collector = interaction.channel.createMessageComponentCollector({ filter, componentType: ComponentType.StringSelect, time: 15000 });
+				
+	try {
+		collector.on(`collect`, collected => {
+			interaction.editReply({components: []});
+		});
+		collector.on(`end`, collected => {
+			if(collected.size == 0) {
+				interaction.editReply({components: []});
+				if(customId == `change_message`) {interaction.client.mapMessages.delete(interaction.guildId);}
+			}	
+		});
+	} catch (error) {}
 }

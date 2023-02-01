@@ -109,7 +109,7 @@ async function askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername,
 	const collector = interaction.channel.createMessageComponentCollector({ filter, time: 15000 });
 				
 	try {
-		collector.on(`collect`, async i => {
+		collector.on(`collect`, i => {
 			actionRow.components[0].setDisabled(true);
 			actionRow.components[1].setDisabled(true);
 			interaction.editReply({ephemeral: true, embeds: [embedToSend], components: [actionRow]});

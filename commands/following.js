@@ -14,6 +14,7 @@ module.exports = {
 
 			let dbresult = await interaction.client.dbs.guildsubs.findOne({where: { guildId: `${interaction.guildId}` }});
 			let numStreamers = 0, streamersInfo = null, twitchStreamerNames = null, twitchCustomMessages = null;
+			
 			if(dbresult) {
 				numStreamers = dbresult.numStreamers;
 				streamersInfo = JSON.parse(dbresult.streamersInfo);
