@@ -13,15 +13,17 @@ module.exports = {
 			const guildIcon = interaction.guild.iconURL();
 
 			let dbresult = await interaction.client.dbs.guildsubs.findOne({where: { guildId: `${interaction.guildId}` }});
-			let numStreamers = 0, streamersInfo = null, twitchStreamerNames = null, twitchCustomMessages = null;
-			
+			let numStreamers = 0, streamersInfo = null, twitchStreamerNames = null, twitchCustomMessages = null, twitchCustomImages = null, twitchChannelIds = null;
+
 			if(dbresult) {
 				numStreamers = dbresult.numStreamers;
 				streamersInfo = JSON.parse(dbresult.streamersInfo);
 				twitchStreamerNames = streamersInfo.streamerDisplayNames;
-				twitchCustomMessages = streamersInfo.customMessages;	
+				twitchCustomMessages = streamersInfo.customMessages;
+				twitchCustomImages = streamersInfo.customImages;
+				twitchChannelIds = streamersInfo.channelIds;
 			}
-			const embedToSend = embedHelper.createFollowingEmbed(twitchStreamerNames, twitchCustomMessages, guildName, guildIcon, numStreamers);
+			const embedToSend = embedHelper.createFollowingEmbed(twitchStreamerNames, twitchCustomMessages, twitchCustomImages, twitchChannelIds, guildName, guildIcon, numStreamers);
 			interaction.reply({embeds: [embedToSend]});
 		} catch (error) {
 			return interaction.reply(`Error checking subscriptions.\n${error}`);

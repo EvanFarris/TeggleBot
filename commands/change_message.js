@@ -9,6 +9,7 @@ module.exports = {
 		.setDescription(`Change the custom message that gets sent with a notification`)
 		.addStringOption(option =>
 			option.setName('message')
+			.setMaxLength(256)
 			.setDescription('The new message you want to send with the streamer notification.')),
 	async execute(interaction) {
 		if(interaction.type === InteractionType.ApplicationCommand) {
@@ -21,13 +22,13 @@ module.exports = {
 			};
 			const selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `change_message`);
 			
-			interaction.client.mapMessages.set(interaction.guildId, customMessage);
+			interaction.client.mapChangesToBe.set(interaction.guildId, customMessage);
 			interaction.reply({content: firstResponseMessage, ephemeral: true, components: [selectMenu]});
 			embedHelper.startCollector(interaction, `change_message`);
 		} else if (interaction.isStringSelectMenu()){
 			const selectedValue = interaction.values[0];
-			const customMessage = interaction.client.mapMessages.get(interaction.guildId);
-			interaction.client.mapMessages.delete(interaction.guildId);
+			const customMessage = interaction.client.mapChangesToBe.get(interaction.guildId);
+			interaction.client.mapChangesToBe.delete(interaction.guildId);
 			if(selectedValue == `none`) {return interaction.update({components: []});}
 
 			//Separate the chosen option into the four required information, use it to get the table information.
@@ -35,7 +36,7 @@ module.exports = {
 			const {streamerAsJSON, gs_tableEntry} = await getFromDbs(interaction, streamerUsername, website);
 			let result = null;
 			if(streamerAsJSON) {
-				result = await dbHelper.updateCustomMessage(interaction.client, gs_tableEntry, streamerAsJSON, interaction.guildId, channelId, streamerId, customMessage);
+				result = await dbHelper.updateProperty(interaction.client, gs_tableEntry, streamerAsJSON, interaction.guildId, channelId, streamerId, `message`, customMessage);
 			}
 			let description;
 			if(result) {

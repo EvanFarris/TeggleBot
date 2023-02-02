@@ -98,7 +98,7 @@ async function main() {
 	client.dbs.temp.sync({force: true});
 	//Create a map and attach it to client. Initialize it in ready.js
 	client.hmap = new Map();
-	client.mapMessages = new Map();
+	client.mapChangesToBe = new Map();
 	
 	console.log(`Making facial expressions at Twitch . . .`);
 	//Setup the twitch client with auto-refreshing token.

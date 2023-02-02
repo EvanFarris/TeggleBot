@@ -7,7 +7,8 @@ module.exports = {
 	decomposeSelected,
 	createEmbedWithButtons,
 	createFollowingEmbed,
-	startCollector
+	startCollector,
+	copy
 }
 
 //Basic embed
@@ -85,7 +86,7 @@ function getSelectMenu(gs_tableEntry, customId) {
 	for(i = 0; i < names.length; i++) {
 		selectMenuOptions.addOptions(
 		{
-			label: `${names[i]} | ${websites[i]}`,
+			label: `${names[i]}`,
 			value: `${streamerIds[i]}|${channels[i]}|${names[i]}|${websites[i]}`
 		});
 
@@ -121,7 +122,7 @@ function createEmbedWithButtons(interaction, streamerUsername, streamerDisplayNa
 }
 
 //Embed to be sent when using /following command (following.js)
-function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages, guildName, guildIcon, numStreamers) {
+function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages, twitchStreamerCustomImages, twitchChannelIds, guildName, guildIcon, numStreamers) {
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#474354`)
 		.setTitle(`Streamers that ${guildName} is following`)
@@ -134,13 +135,13 @@ function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages,
 		if(numStreamers == 0) {
 			embeddedMessage.setDescription(`You are not following anyone.`);
 		}
-
+		let valueMessage;
 		for(i = 0; i < numStreamers; i++) {
-			if(twitchStreamerCustomMessages[i] == ""){
-				embeddedMessage.addFields({name: twitchStreamerNames[i], value: `No custom message set.`});
-			} else {
-				embeddedMessage.addFields({name: twitchStreamerNames[i], value: twitchStreamerCustomMessages[i]});
-			}
+			valueMessage = twitchStreamerCustomMessages[i] || `No custom message set.`;
+			if(twitchStreamerCustomImages[i]) {valueMessage += `\nImage (Clickable if valid link to a picture): [Image](${twitchStreamerCustomImages[i]})`}
+			else {valueMessage += `\nNo custom image set.`;}
+			valueMessage = `Notifications are sent to <#${twitchChannelIds[i]}>\nCustom Message: ` + valueMessage;
+			embeddedMessage.addFields({name: twitchStreamerNames[i], value: valueMessage});
 		}
 
 		return embeddedMessage;
@@ -186,8 +187,12 @@ async function startCollector(interaction, customId){
 		collector.on(`end`, collected => {
 			if(collected.size == 0) {
 				interaction.editReply({components: []});
-				if(customId == `change_message`) {interaction.client.mapMessages.delete(interaction.guildId);}
+				if(customId != "unfollow_select_menu") {interaction.client.mapChangesToBe.delete(interaction.guildId);}
 			}	
 		});
 	} catch (error) {}
+}
+
+function copy(embedToCopy) {
+	return EmbedBuilder.from(embedToCopy);
 }

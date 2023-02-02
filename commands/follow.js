@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, InteractionType, ChannelType, ComponentType} = require('discord.js');
+const { SlashCommandBuilder, InteractionType, ChannelType} = require('discord.js');
 
 const embeddedTitle = `Follow Results`;
 const embedHelper = require('../helperFiles/embed_functions.js');
@@ -21,6 +21,10 @@ module.exports = {
 		.addStringOption(option =>
 			option.setName('message')
 			.setDescription('The message to go along with the notification')
+			.setMaxLength(256))
+		.addStringOption(option =>
+			option.setName(`image`)
+			.setDescription(`Direct link to an image to be sent in the embed`)
 			.setMaxLength(256)),
 	async execute(interaction) {
 		if(interaction.type === InteractionType.ApplicationCommand) {
@@ -28,6 +32,7 @@ module.exports = {
 			let url = interaction.options.getString('url');
 			let channel = interaction.options.getChannel(`disc_channel`);
 			let customMessage = interaction.options.getString(`message`) || "";
+			let customImage = interaction.options.getString(`image`) || null;
 
 			//Separate the url into the website and username. Then check if it is a valid combination (currently only twitch.tv links are supported)
 			let { website, streamerUsername } = validationHelper.splitURLToComponents(url);
@@ -42,7 +47,7 @@ module.exports = {
 			if(streamerAsJSON == null && streamerId == null) {return;}
 			
 			//Store the extraneous streamer's information temporarily (dbHelper's deleteTempInfo)
-			await dbHelper.addTempInfo(interaction.client, interaction.guildId, channel.id, streamerId, streamerUsername, streamerDisplayName, customMessage);	
+			await dbHelper.addTempInfo(interaction.client, interaction.guildId, channel.id, streamerId, streamerUsername, streamerDisplayName, customMessage, customImage);	
 			
 			//Create the embed and ask the guild if the streamer is the right one.
 			const { actionRow, embedToSend } = await embedHelper.createEmbedWithButtons(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon);	
@@ -50,15 +55,15 @@ module.exports = {
 		} else if (interaction.isButton() && interaction.customId == "follow_yes") {
 			//This is where the code returns to if the user clicks the yes button.
 			//Get the streamer's data back from the embed and the temp database.
-			let { gs_tableEntry, streamerAsJSON, channelId, streamerId, streamerUsername, streamerDisplayName, streamerDescription, streamerIcon, customMessage, website } = await getFromEmbedded(interaction, false);
+			let { gs_tableEntry, streamerAsJSON, channelId, streamerId, streamerUsername, streamerDisplayName, streamerDescription, streamerIcon, customMessage, customImage, website } = await getFromEmbedded(interaction, false);
 
 			//Update GUILD_SUBS table, create an entry if one doesn't exist
 			let gs_succ = false, ts_succ = false;
-			gs_succ = await dbHelper.addFollowerToGuildSubs(interaction.client, gs_tableEntry, interaction.guildId, channelId, streamerId, streamerUsername, streamerDisplayName, customMessage, website);
+			gs_succ = await dbHelper.addFollowerToGuildSubs(interaction.client, gs_tableEntry, interaction.guildId, channelId, streamerId, streamerUsername, streamerDisplayName, customMessage, customImage, website);
 
 			//Update TWITCH_STREAMERS table. 
 			if(gs_succ == true) {
-				ts_succ = await dbHelper.addFollowerToTwitchStreamer(interaction.client, streamerAsJSON, channelId, streamerId, streamerUsername, streamerDisplayName, streamerDescription, streamerIcon, customMessage);
+				ts_succ = await dbHelper.addFollowerToTwitchStreamer(interaction.client, streamerAsJSON, channelId, streamerId, streamerUsername, streamerDisplayName, streamerDescription, streamerIcon, customMessage, customImage);
 			} else {
 				//something went wrong, twitch_subs not updated
 				console.log(`Couldn't update Twitch_subs...`);
@@ -91,11 +96,11 @@ async function getFromEmbedded(interaction, removeTempData) {
 	if(removeTempData) {return streamerUsername;}
 	const streamerIcon = previousEmbed.image.url;
 	const streamerDescription = previousEmbed.description;
-	let {channelId, streamerId, streamerDisplayName, customMessage} = await dbHelper.getTempInfo(interaction.client, interaction.guildId, streamerUsername);
+	let {channelId, streamerId, streamerDisplayName, customMessage, customImage} = await dbHelper.getTempInfo(interaction.client, interaction.guildId, streamerUsername);
 	let gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 	let streamerAsJSON = await validationHelper.checkTwitchStreamerExistsLocal(interaction.client, streamerUsername);
 
-	return { gs_tableEntry, streamerAsJSON, channelId, streamerId, streamerUsername, streamerDisplayName, streamerDescription, streamerIcon, customMessage, website };
+	return { gs_tableEntry, streamerAsJSON, channelId, streamerId, streamerUsername, streamerDisplayName, streamerDescription, streamerIcon, customMessage, customImage, website };
 }
 
 //Sends the message to the user, sets up a collector to restrict the interaction to only last for 15 seconds
