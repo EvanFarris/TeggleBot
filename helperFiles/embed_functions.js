@@ -1,40 +1,22 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ComponentType  } = require('discord.js');
 const embeddedTitle = `TeggleBot Subscribe Results`;
 module.exports = {
 	createEmbed,
-	createEmbedComplicated,
 	createLiveStreamEmbed,
 	getSelectMenu,
 	decomposeSelected,
 	createEmbedWithButtons,
-	sleep,
-	createFollowingEmbed
+	createFollowingEmbed,
+	startCollector,
+	copy
 }
 
-
+//Basic embed
 function createEmbed(title, description) {
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#474354`)
 		.setTitle(title)
 		.setDescription(description);
-	return embeddedMessage;
-}
-
-
-async function createEmbedComplicated(streamerUsername, streamerDisplayName, streamerDescription, streamerIcon) {
-	const embeddedMessage = new EmbedBuilder()
-		.setColor(`#474354`)
-		.setTitle(`Retrieved ${streamerDisplayName}`)
-		.setDescription(`Is this the correct streamer?`);
-
-	if(streamerDescription == "") {streamerDescription = " ";}
-	embeddedMessage.setTitle(`Is this the correct streamer? (${streamerDisplayName})`)
-		.setImage(streamerIcon)
-		.setURL(`https://twitch.tv/${streamerUsername}`);
-	if(streamerDescription){
-		embeddedMessage.setDescription(streamerDescription);
-	}
-
 	return embeddedMessage;
 }
 
@@ -44,16 +26,18 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 		.setColor(`#474354`)
 		.setTitle(`${streamEvent.broadcasterName}'s stream`)
 		.setURL(`https://twitch.tv/${streamEvent.broadcasterName}`)
-		.setAuthor({name: streamEvent.broadcasterDisplayName, icon: streamerIcon})
+		.setAuthor({name: streamEvent.broadcasterDisplayName, iconURL: streamerIcon, url: `https://twitch.tv/${streamEvent.broadcasterName}`})
 		.setTimestamp();
 	
 	let liveStream = null;
 	let maxAttempts = 5;
 	let vod = null;
 	let vodFilter = {period: `day`, type: `archive`, first: 1};
+
+	//Get livestream and vod data from Twitch's API. Call may return null, so this loop may take up to (maxAttempts * 5) seconds.
 	while((!liveStream || !vod) && maxAttempts > 0) {
 		if(!liveStream){
-			liveStream = await client.twitchAPI.streams.getStreamByUserId(`${streamEvent.broadcasterId}`);
+			liveStream = await client.twitchAPI.streams.getStreamByUserId(streamEvent.broadcasterId);
 		}
 		if(!vod){
 			vod = await client.twitchAPI.videos.getVideosByUser(streamEvent.broadcasterId, vodFilter);
@@ -87,15 +71,7 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 	return lsEmbed;
 }
 
-async function sleep(milliseconds) {
-	let currentTime = Date.now();
-	const stopTime = currentTime + milliseconds;
-	
-	while(currentTime < stopTime){
-		currentTime = Date.now();
-	}
-}
-
+//Creates a select menu
 function getSelectMenu(gs_tableEntry, customId) {
 	let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
 	let names = jsonParsed.streamerUserNames;
@@ -110,7 +86,7 @@ function getSelectMenu(gs_tableEntry, customId) {
 	for(i = 0; i < names.length; i++) {
 		selectMenuOptions.addOptions(
 		{
-			label: `${names[i]} | ${websites[i]}`,
+			label: `${names[i]}`,
 			value: `${streamerIds[i]}|${channels[i]}|${names[i]}|${websites[i]}`
 		});
 
@@ -118,6 +94,7 @@ function getSelectMenu(gs_tableEntry, customId) {
 	return (new ActionRowBuilder().addComponents(selectMenuOptions));
 }
 
+//Decomposes the value returned from a stringSelectMenu
 function decomposeSelected(selectedValue) {
 	let pipeIndexes = selectedValue.split(`|`);
 	let streamerId = pipeIndexes[0];
@@ -127,8 +104,8 @@ function decomposeSelected(selectedValue) {
 	return {streamerUsername, website, streamerId, channelId};
 }
 
-//Create the embed with the help of embedHelper.
-async function createEmbedWithButtons(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon) {
+//Embed with buttons to be sent when following a streamer, to confirm they want to follow this particular streamer
+function createEmbedWithButtons(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon) {
 	const actionRow = new ActionRowBuilder()
 		.addComponents(
 				new ButtonBuilder()
@@ -140,11 +117,12 @@ async function createEmbedWithButtons(interaction, streamerUsername, streamerDis
 					.setLabel(`No`)
 					.setStyle(ButtonStyle.Secondary),
 		);
-	let embedToSend = await createEmbedComplicated(streamerUsername, streamerDisplayName, streamerDescription, streamerIcon);
+	let embedToSend = createCheckStreamerEmbed(streamerUsername, streamerDisplayName, streamerDescription, streamerIcon);
 	return { actionRow, embedToSend };
 }
 
-function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages, guildName, guildIcon, numStreamers) {
+//Embed to be sent when using /following command (following.js)
+function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages, twitchStreamerCustomImages, twitchChannelIds, guildName, guildIcon, numStreamers) {
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#474354`)
 		.setTitle(`Streamers that ${guildName} is following`)
@@ -157,14 +135,64 @@ function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages,
 		if(numStreamers == 0) {
 			embeddedMessage.setDescription(`You are not following anyone.`);
 		}
-
+		let valueMessage;
 		for(i = 0; i < numStreamers; i++) {
-			if(twitchStreamerCustomMessages[i] == ""){
-				embeddedMessage.addFields({name: twitchStreamerNames[i], value: `No custom message set.`});
-			} else {
-				embeddedMessage.addFields({name: twitchStreamerNames[i], value: twitchStreamerCustomMessages[i]});
-			}
+			valueMessage = twitchStreamerCustomMessages[i] || `No custom message set.`;
+			if(twitchStreamerCustomImages[i]) {valueMessage += `\nImage (Clickable if valid link to a picture): [Image](${twitchStreamerCustomImages[i]})`}
+			else {valueMessage += `\nNo custom image set.`;}
+			valueMessage = `Notifications are sent to <#${twitchChannelIds[i]}>\nCustom Message: ` + valueMessage;
+			embeddedMessage.addFields({name: twitchStreamerNames[i], value: valueMessage});
 		}
 
 		return embeddedMessage;
+}
+
+//Used in /following when asking if the streamer found is the one they want to subscribe to.
+function createCheckStreamerEmbed(streamerUsername, streamerDisplayName, streamerDescription, streamerIcon) {
+	const embeddedMessage = new EmbedBuilder()
+		.setColor(`#474354`)
+		.setTitle(`Retrieved ${streamerDisplayName}`)
+		.setDescription(`Is this the correct streamer?`);
+
+	if(streamerDescription == "" || streamerDescription == "null") {streamerDescription = null;}
+	embeddedMessage.setTitle(`Is this the correct streamer? (${streamerDisplayName})`)
+		.setImage(streamerIcon)
+		.setURL(`https://twitch.tv/${streamerUsername}`);
+	if(streamerDescription){
+		embeddedMessage.setDescription(streamerDescription);
+	}
+
+	return embeddedMessage;
+}
+
+//Used to wait for a specified amount of time, as twitch caches need time to update 
+async function sleep(milliseconds) {
+	let currentTime = Date.now();
+	const stopTime = currentTime + milliseconds;
+	
+	while(currentTime < stopTime){
+		currentTime = Date.now();
+	}
+}
+
+//Component collector for string select menus (unfollow.js, change_message.js)
+async function startCollector(interaction, customId){
+	const filter = i => i.customId == `${customId}`;
+	const collector = interaction.channel.createMessageComponentCollector({ filter, componentType: ComponentType.StringSelect, time: 15000 });
+				
+	try {
+		collector.on(`collect`, collected => {
+			interaction.editReply({components: []});
+		});
+		collector.on(`end`, collected => {
+			if(collected.size == 0) {
+				interaction.editReply({components: []});
+				if(customId != "unfollow_select_menu") {interaction.client.mapChangesToBe.delete(interaction.guildId);}
+			}	
+		});
+	} catch (error) {}
+}
+
+function copy(embedToCopy) {
+	return EmbedBuilder.from(embedToCopy);
 }

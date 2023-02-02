@@ -19,9 +19,8 @@ module.exports = {
 
 			//Create the select menu to display
 			let selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `unfollow_select_menu`);
-			//TODO: Implement a collector like in /follow, maybe add a map to not allow multiple functions from going on?.
 			interaction.reply({content: `Choose a person to unsubscribe from`, ephemeral: true, components: [selectMenu] });
-				
+			embedHelper.startCollector(interaction,`unfollow_select_menu`);
 		} else if(interaction.isStringSelectMenu()) {
 			const selectedValue = interaction.values[0];
 

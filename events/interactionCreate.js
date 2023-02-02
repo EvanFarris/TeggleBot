@@ -27,6 +27,10 @@ module.exports = {
 				interaction.client.commands.get("unfollow").execute(interaction);
 			} else if (interaction.customId == "change_message") {
 				interaction.client.commands.get("change_message").execute(interaction);
+			} else if(interaction.customId == "change_image") {
+				interaction.client.commands.get("change_image").execute(interaction);
+			} else if(interaction.customId == "change_channel") {
+				interaction.client.commands.get("change_channel").execute(interaction);
 			}
 		}
 		
