@@ -3,11 +3,7 @@ module.exports = {
 	name: 'interactionCreate',
 	execute(interaction) {
 		if((!interaction.isCommand() && !interaction.isButton() && !interaction.isStringSelectMenu())) {return;}
-		if(!interaction.memberPermissions.has(`Administrator`) && !interaction.memberPermissions.has(`ManageWebhooks`) && !interaction.memberPermissions.has(`ManageGuild`)) {
-			interaction.reply({content: 'You must have at least the Administrator, Manage Webhooks, or Manage Server permission to use this command.', ephemeral: true});
-			return;
-		}
-
+		
 		if(interaction.isCommand()) {
 			const command = interaction.client.commands.get(interaction.commandName);
 			if(!command) return;
@@ -17,6 +13,10 @@ module.exports = {
 					if(interaction.client.safeCommands.has(interaction.commandName)) {
 						command.execute(interaction);
 					} else if(!interaction.client.guildSet.has(interaction.guildId)) {
+						if(!interaction.memberPermissions.has(`Administrator`) && !interaction.memberPermissions.has(`ManageWebhooks`) && !interaction.memberPermissions.has(`ManageGuild`)) {
+							interaction.reply({content: 'You must have at least the Administrator, Manage Webhooks, or Manage Server permission to use this command.', ephemeral: true});
+							return;
+						}
 						interaction.client.guildSet.add(interaction.guildId);
 						command.execute(interaction);
 					} else {
