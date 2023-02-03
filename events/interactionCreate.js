@@ -2,20 +2,28 @@ const {InteractionType} = require('discord.js');
 module.exports = {
 	name: 'interactionCreate',
 	execute(interaction) {
-		if(!interaction.isCommand() && !interaction.isButton() && !interaction.isStringSelectMenu()) return;
-		if(!interaction.memberPermissions.has(`Administrator`) && !interaction.memberPermissions.has(`ManageWebhooks`) && !interaction.memberPermissions.has(`ManageGuild`)) {
-			interaction.reply({content: 'You must have at least the Administrator, Manage Webhooks, or Manage Server permission to use this command.', ephemeral: true});
-			return;
-		}
-
+		if((!interaction.isCommand() && !interaction.isButton() && !interaction.isStringSelectMenu())) {return;}
+		
 		if(interaction.isCommand()) {
 			const command = interaction.client.commands.get(interaction.commandName);
 			if(!command) return;
 			try {
 				if(interaction.type === InteractionType.ApplicationCommand) {
-					command.execute(interaction);
+					//Let dev commands be executed 
+					if(interaction.client.safeCommands.has(interaction.commandName)) {
+						command.execute(interaction);
+					} else if(!interaction.client.guildSet.has(interaction.guildId)) {
+						if(!interaction.memberPermissions.has(`Administrator`) && !interaction.memberPermissions.has(`ManageWebhooks`) && !interaction.memberPermissions.has(`ManageGuild`)) {
+							interaction.reply({content: 'You must have at least the Administrator, Manage Webhooks, or Manage Server permission to use this command.', ephemeral: true});
+							return;
+						}
+						interaction.client.guildSet.add(interaction.guildId);
+						command.execute(interaction);
+					} else {
+						interaction.reply(`Guild already has an active slash command going on. Please wait until that command is resolved.`)
+					}
+					
 				} 
-			
 			} catch (error) {
 				console.error(error);
 				interaction.reply({ content: `There was an error while executing this command!`, ephemeral: true});

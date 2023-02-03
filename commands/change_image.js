@@ -17,6 +17,7 @@ module.exports = {
 			const firstResponseMessage = `Choose the streamer to update.`;
 			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 			if(!gs_tableEntry){
+				interaction.client.guildSet.delete(interaction.guildId);
 				let description = "You are not subscribed to anyone.";
 				return interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 			};

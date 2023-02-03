@@ -13,6 +13,7 @@ module.exports = {
 			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 			//If the guild isn't subscribed to anyone, return
 			if(!gs_tableEntry) {
+				interaction.client.guildSet.delete(interaction.guildId);
 				let description = `You are not subscribed to anyone.`;
 				return interaction.reply({ embeds : [embedHelper.createEmbed(embeddedTitle, description)]});
 			}
@@ -46,8 +47,6 @@ module.exports = {
 				return interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 			}
 
-		} else {
-			interaction.reply("OK");
 		}
 	},
 };

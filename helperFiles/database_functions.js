@@ -308,7 +308,7 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 				
 				for( i = 0; i < channelsToNotify.length; i++ ) {
 					channel = await client.channels.cache.get(`${channelsToNotify[i]}`);
-					if(channel) {
+					if(channel && channel.permissionsFor(client.user).has(["ViewChannel","SendMessages","EmbedLinks"])) {
 						try {
 							if(customMessages[i].length != 0) {
 								try{
@@ -340,7 +340,7 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 				for( i = 0; i < channelsToNotify.length; i++ ) {
 					channel = await client.channels.cache.get(`${channelsToNotify[i]}`);
 					try{
-						if(channel) {channel.send(msg);}
+						if(channel && channel.permissionsFor(client.user).has(["ViewChannel","SendMessages","EmbedLinks"])) {channel.send(msg);}
 					} catch (error) {
 						console.log(`Error sending notification\n${error}`);
 					}	
