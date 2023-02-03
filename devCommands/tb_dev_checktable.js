@@ -14,6 +14,7 @@ module.exports = {
 	async execute(interaction) {
 		let table_name = interaction.options.getString(`tablename`).toUpperCase();
 		try {
+			interaction.client.guildSet.delete(interaction.guildId);
 			let rows;
 			let result = ``;
 			if(table_name == "TWITCH_STREAMERS") {

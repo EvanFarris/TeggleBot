@@ -12,6 +12,7 @@ module.exports = {
 		interaction.client.dbs.temp.sync({force: true});
 		interaction.client.hmap.clear();
 		interaction.client.mapChangesToBe.clear();
+		interaction.client.guildSet.clear();
 		interaction.reply("Completed.");
 	},
 	

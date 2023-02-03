@@ -9,9 +9,15 @@ const commands = [];
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 const devCommands = [];
 const devFiles = fs.readdirSync('./devCommands').filter(file => file.endsWith('.js'));
+const safeFiles = fs.readdirSync(`./safeCommands`).filter(file => file.endsWith(`.js`));
 
 for(const file of commandFiles) {
 	const command = require(`./commands/${file}`);
+	commands.push(command.data.toJSON());
+}
+
+for(const file of safeFiles) {
+	const command = require(`./safeCommands/${file}`);
 	commands.push(command.data.toJSON());
 }
 

@@ -24,6 +24,7 @@ module.exports = {
 				twitchChannelIds = streamersInfo.channelIds;
 			}
 			const embedToSend = embedHelper.createFollowingEmbed(twitchStreamerNames, twitchCustomMessages, twitchCustomImages, twitchChannelIds, guildName, guildIcon, numStreamers);
+			interaction.client.guildSet.delete(interaction.guildId);
 			interaction.reply({embeds: [embedToSend]});
 		} catch (error) {
 			return interaction.reply(`Error checking subscriptions.\n${error}`);

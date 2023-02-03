@@ -36,15 +36,15 @@ module.exports = {
 
 			//Separate the url into the website and username. Then check if it is a valid combination (currently only twitch.tv links are supported)
 			let { website, streamerUsername } = validationHelper.splitURLToComponents(url);
-			if(!validationHelper.isWebsiteSupported(interaction, streamerUsername, website)) {return;}
+			if(!validationHelper.isWebsiteSupported(interaction, streamerUsername, website)) {return interaction.client.guildSet.delete(interaction.guildId);}
 
 			//Get gs_tableEntry for future use, and check to see if the guild is already subscribed to the streamer it's asking for.
 			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
-			if(!(await dbHelper.checkGuildSubs(interaction, gs_tableEntry, streamerUsername, website, embeddedTitle))) {return;}
+			if(!(await dbHelper.checkGuildSubs(interaction, gs_tableEntry, streamerUsername, website, embeddedTitle))) {return interaction.client.guildSet.delete(interaction.guildId);}
 
 			//Check to see if the streamer actually exists, and retrieve relevant information if they do.
 			const { streamerAsJSON, streamerId, streamerDisplayName, streamerDescription, streamerIcon} = await validationHelper.validateStreamerExists(interaction, streamerUsername, website);
-			if(streamerAsJSON == null && streamerId == null) {return;}
+			if(streamerAsJSON == null && streamerId == null) {return interaction.client.guildSet.delete(interaction.guildId);}
 			
 			//Store the extraneous streamer's information temporarily (dbHelper's deleteTempInfo)
 			await dbHelper.addTempInfo(interaction.client, interaction.guildId, channel.id, streamerId, streamerUsername, streamerDisplayName, customMessage, customImage);	
@@ -72,11 +72,14 @@ module.exports = {
 			//Final response to the user.
 			let description;
 			if(gs_succ == true && ts_succ == true) {
-				description = `You have successfully followed ${streamerDisplayName}.\nNotifications will be sent to <#${channelId}>`; 		
+				description = `You have successfully followed ${streamerDisplayName}.\nNotifications will be sent to <#${channelId}>\n`;
+				if(!(await interaction.client.channels.cache.get(`${channelId}`)).permissionsFor(interaction.client.user).has(["ViewChannel","SendMessages","EmbedLinks"])) {
+					description += `Warning: This bot isn't in the new channel. Messages will not be sent unless the bot is in the new channel.`;
+				} 		
 			} else {
 				description = `Something went wrong on our end . . .`; 
 			}
-			
+
 			interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 		} else if (interaction.isButton() && interaction.customId == "follow_no") {
 			//Clean up the temporary table's data 
@@ -115,6 +118,7 @@ async function askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername,
 				
 	try {
 		collector.on(`collect`, i => {
+			interaction.client.guildSet.delete(interaction.guildId);
 			actionRow.components[0].setDisabled(true);
 			actionRow.components[1].setDisabled(true);
 			interaction.editReply({ephemeral: true, embeds: [embedToSend], components: [actionRow]});
@@ -122,6 +126,7 @@ async function askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername,
 
 		collector.on(`end`, collected => {
 			if(collected.size == 0) {
+				interaction.client.guildSet.delete(interaction.guildId);
 				dbHelper.deleteTempInfo(interaction.client, interaction.guildId, streamerUsername);
 				actionRow.components[0].setDisabled(true);
 				actionRow.components[1].setDisabled(true);

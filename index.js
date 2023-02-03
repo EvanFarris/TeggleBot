@@ -20,6 +20,9 @@ async function main() {
 	console.log(`Rolling out events and commands . . .`);
 	const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 	const devFiles = fs.readdirSync(`./devCommands`).filter(file => file.endsWith(`.js`));
+	const safeFiles = fs.readdirSync(`./safeCommands`).filter(file => file.endsWith(`.js`));
+	client.safeCommands = new Set();
+
 	//Load commands into the client
 	for(const file of commandFiles) {
 		const command = require(`./commands/${file}`);
@@ -28,6 +31,12 @@ async function main() {
 	for(const file of devFiles) {
 		const command = require(`./devCommands/${file}`);
 		client.commands.set(command.data.name, command);
+		client.safeCommands.add(command.data.name);
+	}
+	for(const file of safeFiles) {
+		const command = require(`./safeCommands/${file}`);
+		client.commands.set(command.data.name, command);
+		client.safeCommands.add(command.data.name);
 	}
 
 	//Load event handlers into the client
@@ -99,7 +108,8 @@ async function main() {
 	//Create a map and attach it to client. Initialize it in ready.js
 	client.hmap = new Map();
 	client.mapChangesToBe = new Map();
-	
+	client.guildSet = new Set();
+
 	console.log(`Making facial expressions at Twitch . . .`);
 	//Setup the twitch client with auto-refreshing token.
 	const authProvider = new ClientCredentialsAuthProvider(twitchClientId, twitchClientSecret);

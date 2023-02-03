@@ -138,7 +138,7 @@ function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages,
 		let valueMessage;
 		for(i = 0; i < numStreamers; i++) {
 			valueMessage = twitchStreamerCustomMessages[i] || `No custom message set.`;
-			if(twitchStreamerCustomImages[i]) {valueMessage += `\nImage (Clickable if valid link to a picture): [Image](${twitchStreamerCustomImages[i]})`}
+			if(twitchStreamerCustomImages[i]) {valueMessage += `\n[Image](${twitchStreamerCustomImages[i]}) (Clickable if set to a valid link to a picture)`}
 			else {valueMessage += `\nNo custom image set.`;}
 			valueMessage = `Notifications are sent to <#${twitchChannelIds[i]}>\nCustom Message: ` + valueMessage;
 			embeddedMessage.addFields({name: twitchStreamerNames[i], value: valueMessage});
@@ -182,10 +182,12 @@ async function startCollector(interaction, customId){
 				
 	try {
 		collector.on(`collect`, collected => {
+			interaction.client.guildSet.delete(interaction.guildId);
 			interaction.editReply({components: []});
 		});
 		collector.on(`end`, collected => {
 			if(collected.size == 0) {
+				interaction.client.guildSet.delete(interaction.guildId);
 				interaction.editReply({components: []});
 				if(customId != "unfollow_select_menu") {interaction.client.mapChangesToBe.delete(interaction.guildId);}
 			}	

@@ -19,6 +19,7 @@ module.exports = {
 			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 			if(!gs_tableEntry){
 				let description = "You are not subscribed to anyone.";
+				interaction.client.guildSet.delete(interaction.guildId);
 				return interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 			};
 			const selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `change_channel`);
@@ -29,7 +30,6 @@ module.exports = {
 		} else if (interaction.isStringSelectMenu()){
 			const selectedValue = interaction.values[0];
 			const newChannel = interaction.client.mapChangesToBe.get(interaction.guildId);
-			interaction.client.mapChangesToBe.delete(interaction.guildId);
 			if(selectedValue == `none`) {return interaction.update({components: []});}
 
 			//Separate the chosen option into the four required information, use it to get the table information.
@@ -41,7 +41,10 @@ module.exports = {
 			}
 			let description;
 			if(result) {
-				description = `Channel changed successfully.`;
+				description = `Channel changed successfully to <#${newChannel}>.\n`;
+				if(!(await interaction.client.channels.cache.get(`${newChannel}`)).permissionsFor(interaction.client.user).has(["ViewChannel","SendMessages","EmbedLinks"])) {
+					description += `Warning: This bot isn't in the new channel. Messages will not be sent unless the bot is in the new channel.`;
+				}
 			} else {
 				description = `Channel did not change successfully.`;
 			}
