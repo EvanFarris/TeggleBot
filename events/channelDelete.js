@@ -13,6 +13,7 @@ module.exports = {
 			let streamerNames = streamers.streamerUserNames;
 			let streamerDisplayNames = streamers.streamerDisplayNames;
 			let customMessages = streamers.customMessages;
+			let customImages = streamers.customImages;
 			let streamerWebsites = streamers.streamerWebsites;
 
 			let initialSubscriptions = subscriptions.get(`numStreamers`);
@@ -27,6 +28,7 @@ module.exports = {
 					streamerNames.splice(i,1);
 					streamerDisplayNames.splice(i,1);
 					customMessages.splice(i,1);
+					customImages.splice(i,1);
 					streamerWebsites.splice(i,1);
 					i--;
 				}
@@ -35,7 +37,7 @@ module.exports = {
 			if(streamerNames.length == 0) {
 				await subscriptions.destroy();
 			} else if(initialSubscriptions != streamerNames.length) {
-				const streamersStringified = JSON.stringify({ "channelIds" : streamerChannels, "streamerIds" : streamerIds, "streamerUserNames" : streamerNames, "streamerDisplayNames" : streamerDisplayNames, "customMessages" : customMessages, "streamerWebsites" : streamerWebsites});
+				const streamersStringified = JSON.stringify({ "channelIds" : streamerChannels, "streamerIds" : streamerIds, "streamerUserNames" : streamerNames, "streamerDisplayNames" : streamerDisplayNames, "customMessages" : customMessages, "customImages" : customImages, "streamerWebsites" : streamerWebsites});
 				await subcriptions.update({streamersInfo: streamersStringified, numStreamers : streamerNames.length});
 			}
 		}

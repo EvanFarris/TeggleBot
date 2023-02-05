@@ -1,12 +1,13 @@
 const { SlashCommandBuilder, InteractionType} = require('discord.js');
 
+const commandName = `unfollow`;
 const embedHelper = require('../helperFiles/embed_functions.js');
 const dbHelper = require(`../helperFiles/database_functions.js`);
 const validationHelper = require(`../helperFiles/validation_functions.js`);
 const embeddedTitle = `TeggleBot Unfollow Results`;
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('unfollow')
+		.setName(commandName)
 		.setDescription('Unfollow a streamer.'),
 	async execute(interaction) {
 		if(interaction.type === InteractionType.ApplicationCommand) {
@@ -19,9 +20,9 @@ module.exports = {
 			}
 
 			//Create the select menu to display
-			let selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `unfollow_select_menu`);
-			interaction.reply({content: `Choose a person to unsubscribe from`, ephemeral: true, components: [selectMenu] });
-			embedHelper.startCollector(interaction,`unfollow_select_menu`);
+			let selectMenu = embedHelper.getSelectMenu(gs_tableEntry, commandName);
+			let messageSent = await interaction.reply({content: `Choose a person to unsubscribe from`, ephemeral: true, components: [selectMenu] });
+			embedHelper.startCollector(interaction, commandName, messageSent);
 		} else if(interaction.isStringSelectMenu()) {
 			const selectedValue = interaction.values[0];
 

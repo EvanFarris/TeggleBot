@@ -24,8 +24,8 @@ module.exports = {
 			const selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `change_message`);
 			
 			interaction.client.mapChangesToBe.set(interaction.guildId, customMessage);
-			interaction.reply({content: firstResponseMessage, ephemeral: true, components: [selectMenu]});
-			embedHelper.startCollector(interaction, `change_message`);
+			let messageSent = await interaction.reply({content: firstResponseMessage, ephemeral: true, components: [selectMenu]});
+			embedHelper.startCollector(interaction, `change_message`, messageSent);
 		} else if (interaction.isStringSelectMenu()){
 			const selectedValue = interaction.values[0];
 			const customMessage = interaction.client.mapChangesToBe.get(interaction.guildId);

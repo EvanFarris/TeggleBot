@@ -109,11 +109,11 @@ function createEmbedWithButtons(interaction, streamerUsername, streamerDisplayNa
 	const actionRow = new ActionRowBuilder()
 		.addComponents(
 				new ButtonBuilder()
-					.setCustomId('follow_yes')
+					.setCustomId('follow')
 					.setLabel(`Yes (Follow)`)
 					.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
-					.setCustomId(`follow_no`)
+					.setCustomId(`button_no`)
 					.setLabel(`No`)
 					.setStyle(ButtonStyle.Secondary),
 		);
@@ -176,9 +176,9 @@ async function sleep(milliseconds) {
 }
 
 //Component collector for string select menus (unfollow.js, change_message.js)
-async function startCollector(interaction, customId){
+async function startCollector(interaction, customId, messageSent){
 	const filter = i => i.customId == `${customId}`;
-	const collector = interaction.channel.createMessageComponentCollector({ filter, componentType: ComponentType.StringSelect, time: 15000 });
+	const collector = messageSent.createMessageComponentCollector({ filter, componentType: ComponentType.StringSelect, time: 15000 });
 				
 	try {
 		collector.on(`collect`, collected => {
@@ -189,10 +189,10 @@ async function startCollector(interaction, customId){
 			if(collected.size == 0) {
 				interaction.client.guildSet.delete(interaction.guildId);
 				interaction.editReply({components: []});
-				if(customId != "unfollow_select_menu") {interaction.client.mapChangesToBe.delete(interaction.guildId);}
+				if(customId != "unfollow") {interaction.client.mapChangesToBe.delete(interaction.guildId);}
 			}	
 		});
-	} catch (error) {}
+	} catch (error) {console.log(error);}
 }
 
 function copy(embedToCopy) {
