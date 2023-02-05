@@ -52,7 +52,7 @@ module.exports = {
 			//Create the embed and ask the guild if the streamer is the right one.
 			const { actionRow, embedToSend } = await embedHelper.createEmbedWithButtons(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon);	
 			await askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername, actionRow, embedToSend);
-		} else if (interaction.isButton() && interaction.customId == "follow_yes") {
+		} else if (interaction.isButton()) {
 			//This is where the code returns to if the user clicks the yes button.
 			//Get the streamer's data back from the embed and the temp database.
 			let { gs_tableEntry, streamerAsJSON, channelId, streamerId, streamerUsername, streamerDisplayName, streamerDescription, streamerIcon, customMessage, customImage, website } = await getFromEmbedded(interaction, false);
@@ -81,11 +81,6 @@ module.exports = {
 			}
 
 			interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
-		} else if (interaction.isButton() && interaction.customId == "follow_no") {
-			//Clean up the temporary table's data 
-			let streamerUsername = await getFromEmbedded(interaction, true);
-			await dbHelper.deleteTempInfo(interaction.client, interaction.guildId, streamerUsername);
-			interaction.update({ephemeral: true});
 		}
 		
 	},
@@ -109,12 +104,13 @@ async function getFromEmbedded(interaction, removeTempData) {
 //Sends the message to the user, sets up a collector to restrict the interaction to only last for 15 seconds
 //Also cleans up the temporary data if the button is not responded to.
 async function askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername, actionRow, embedToSend) {
+	let messageSent;
 	try {
-		await interaction.reply({ ephemeral: true, embeds: [embedToSend], components: [actionRow] });
-	} catch (error) {}
+		messageSent = await interaction.reply({ ephemeral: true, embeds: [embedToSend], components: [actionRow] });
+	} catch (error) {console.log(error);}
 			
-	const filter = i => i.customId == "follow_yes" || i.customId == "follow_no";
-	const collector = interaction.channel.createMessageComponentCollector({ filter, time: 15000 });
+	const filter = i => i.customId == "follow" || i.customId == "button_no";
+	const collector = messageSent.createMessageComponentCollector({ filter, time: 15000 });
 				
 	try {
 		collector.on(`collect`, i => {
@@ -122,6 +118,9 @@ async function askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername,
 			actionRow.components[0].setDisabled(true);
 			actionRow.components[1].setDisabled(true);
 			interaction.editReply({ephemeral: true, embeds: [embedToSend], components: [actionRow]});
+
+			//Clean up the temporary table's data on "No" button press
+			if(i.customId == "button_no") {dbHelper.deleteTempInfo(interaction.client, interaction.guildId, streamerUsername);}
 		});
 
 		collector.on(`end`, collected => {

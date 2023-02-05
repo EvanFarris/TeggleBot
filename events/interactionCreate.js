@@ -9,18 +9,19 @@ module.exports = {
 			if(!command) return;
 			try {
 				if(interaction.type === InteractionType.ApplicationCommand) {
-					//Let dev commands be executed 
+					//Let safe commands and dev commands be executed regardless of state or permissions.
 					if(interaction.client.safeCommands.has(interaction.commandName)) {
 						command.execute(interaction);
-					} else if(!interaction.client.guildSet.has(interaction.guildId)) {
-						if(!interaction.memberPermissions.has(`Administrator`) && !interaction.memberPermissions.has(`ManageWebhooks`) && !interaction.memberPermissions.has(`ManageGuild`)) {
-							interaction.reply({content: 'You must have at least the Administrator, Manage Webhooks, or Manage Server permission to use this command.', ephemeral: true});
-							return;
+					} else if(!interaction.client.guildSet.has(interaction.guildId)) { 
+						//Only allow people that have special permissions to use commands that change database state.
+						if(!interaction.memberPermissions.any([`Administrator`, `ManageWebhooks`, `ManageGuild`])) {
+							return interaction.reply({content: 'You must have at least the Administrator, Manage Webhooks, or Manage Server permission to use this command.', ephemeral: true});
 						}
+						//Adding guildIds to the set stops race condition when calling a command twice. 
 						interaction.client.guildSet.add(interaction.guildId);
 						command.execute(interaction);
 					} else {
-						interaction.reply(`Guild already has an active slash command going on. Please wait until that command is resolved.`)
+						interaction.reply(`Guild already has an active slash command going on. Please wait until that command is resolved.`);
 					}
 					
 				} 
@@ -29,21 +30,11 @@ module.exports = {
 				interaction.reply({ content: `There was an error while executing this command!`, ephemeral: true});
 			}
 		} else {
-			if(interaction.customId == "follow_yes" || interaction.customId == "follow_no") {
-				interaction.client.commands.get("follow").execute(interaction);
-			} else if (interaction.customId == "unfollow_select_menu") {
-				interaction.client.commands.get("unfollow").execute(interaction);
-			} else if (interaction.customId == "change_message") {
-				interaction.client.commands.get("change_message").execute(interaction);
-			} else if(interaction.customId == "change_image") {
-				interaction.client.commands.get("change_image").execute(interaction);
-			} else if(interaction.customId == "change_channel") {
-				interaction.client.commands.get("change_channel").execute(interaction);
+			if(interaction.client.commands.has(interaction.customId)) {
+				interaction.client.commands.get(interaction.customId).execute(interaction);
+			} else if(interaction.customId == `button_no`) {
+				interaction.update({ephemeral: true});
 			}
 		}
-		
-
-		
-		
 	}
 };

@@ -25,8 +25,8 @@ module.exports = {
 			const selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `change_channel`);
 			
 			interaction.client.mapChangesToBe.set(interaction.guildId, newChannel.id);
-			await interaction.reply({content: firstResponseMessage, ephemeral: true, components: [selectMenu]});
-			embedHelper.startCollector(interaction, `change_channel`);
+			let messageSent = await interaction.reply({content: firstResponseMessage, ephemeral: true, components: [selectMenu]});
+			embedHelper.startCollector(interaction, `change_channel`, messageSent);
 		} else if (interaction.isStringSelectMenu()){
 			const selectedValue = interaction.values[0];
 			const newChannel = interaction.client.mapChangesToBe.get(interaction.guildId);

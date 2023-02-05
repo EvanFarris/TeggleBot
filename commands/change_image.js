@@ -24,8 +24,8 @@ module.exports = {
 			const selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `change_image`);
 			
 			interaction.client.mapChangesToBe.set(interaction.guildId, customImage);
-			await interaction.reply({content: firstResponseMessage, ephemeral: true, components: [selectMenu]});
-			embedHelper.startCollector(interaction, `change_image`);
+			let messageSent = await interaction.reply({content: firstResponseMessage, ephemeral: true, components: [selectMenu]});
+			embedHelper.startCollector(interaction, `change_image`, messageSent);
 		} else if (interaction.isStringSelectMenu()){
 			const selectedValue = interaction.values[0];
 			const customImage = interaction.client.mapChangesToBe.get(interaction.guildId);
