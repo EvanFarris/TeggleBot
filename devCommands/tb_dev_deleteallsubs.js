@@ -10,6 +10,7 @@ module.exports = {
 		interaction.client.dbs.guildsubs.sync({force: true});
 		interaction.client.dbs.twitchstreamers.sync({force: true});
 		interaction.client.dbs.temp.sync({force: true});
+		inteaction.client.dbs.streamtemp.sync({force:true});
 		interaction.client.hmap.clear();
 		interaction.client.mapChangesToBe.clear();
 		interaction.client.guildSet.clear();

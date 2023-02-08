@@ -94,7 +94,13 @@ async function main() {
 		streamerId: Sequelize.STRING,
 		streamerDisplayName: Sequelize.STRING,
 		customMessage: Sequelize.STRING,
+	});
 
+	const STREAM_TEMP = sequelize.define(`stream_temp`, {
+		broadcasterId: Sequelize.STRING,
+		streamId: Sequelize.STRING,
+		messagePairs: Sequelize.STRING,
+		vodExists: Sequelize.BOOLEAN,
 	});
 
 	//Attach the database + tables to the discord client so the discord commands can access the related tables.
@@ -102,9 +108,11 @@ async function main() {
 	client.dbs.guildsubs = GUILD_SUBS;
 	client.dbs.twitchstreamers = TWITCH_STREAMERS;
 	client.dbs.temp = SUB_TEMP;
+	client.dbs.streamtemp = STREAM_TEMP;
 	client.dbs.guildsubs.sync({force: force});
 	client.dbs.twitchstreamers.sync({force: force});
 	client.dbs.temp.sync({force: true});
+	client.dbs.streamtemp.sync({force: true});
 	//Create a map and attach it to client. Initialize it in ready.js
 	client.hmap = new Map();
 	client.mapChangesToBe = new Map();
