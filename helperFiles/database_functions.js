@@ -470,17 +470,36 @@ async function streamerWentOffline(client, streamerId) {
 		let vodExists = streamThatEnded.vodExists;
 		streamThatEnded.destroy();
 
-		let vod = null, vodObject = null, vodLink = ``;
-		if(!vodExists) {
-			let vodFilter = {period: `day`, type: `archive`, first: 1};
-			vod = await client.twitchAPI.videos.getVideosByUser(streamerId, vodFilter);
-			vodObject = (vod.data)[0];
-		}
-		if(vodObject && vodObject.streamId == streamId) {
-			vodLink = vodObject.url;
-		}
-		
-		let channel, message, newEmbed;
+		let vodLink = await getVODLink(client, vodExists, streamId, streamerId);
+	
+		editMessages(client, vodLink, channelSnowflakes);
+
+		if(!vodLink && !vodExists){
+			setTimeout(async () => {
+				let vl = await getVODLink(client, vodExists, streamId, streamerId);
+				if(vl) {
+					editMessages(client, vl, channelSnowflakes);
+				}	
+			},300000);
+		}		
+	}
+}
+
+async function getVODLink(client, vodExists, streamId, streamerId) {
+	let vod = null, vodObject = null, vodLink = ``;
+	if(!vodExists) {
+		let vodFilter = {period: `day`, type: `archive`, first: 1};
+		vod = await client.twitchAPI.videos.getVideosByUser(streamerId, vodFilter);
+		vodObject = (vod.data)[0];
+	}
+	if(vodObject && vodObject.streamId == streamId) {
+		vodLink = vodObject.url;
+	}
+	return vodLink;
+}
+
+async function editMessages (client, vodLink, channelSnowflakes) {
+	let channel, message, newEmbed;
 		channelSnowflakes.forEach(async (obj) => {
 			try{
 				channel = await client.channels.fetch(obj.channelId);
@@ -497,5 +516,4 @@ async function streamerWentOffline(client, streamerId) {
 			} catch (error) {console.log(error);}
 			
 		});
-	}
 }
