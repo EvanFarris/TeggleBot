@@ -4,7 +4,6 @@ const fs = require('node:fs');
 const { REST, Routes } = require(`discord.js`);
 
 const { DISCORD_BOT_TOKEN: discordToken, DISCORD_CLIENT_ID: clientID, DISCORD_TEST_SERVER_ID: guildID, DISCORD_TEST_SERVER_ID2: guildID2 } = process.env;
-
 const commands = [];
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 const devCommands = [];
@@ -34,8 +33,8 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
 		//Global commands
 		await rest.put(Routes.applicationCommands(clientID), {body: commands},);
 		//Sends only devCommands to these test guilds
-		await rest.put(Routes.applicationGuildCommands(clientID,guildID), {body: devCommands},);
-		await rest.put(Routes.applicationGuildCommands(clientID,guildID2), {body: devCommands},);
+		if(guildID){await rest.put(Routes.applicationGuildCommands(clientID,guildID), {body: devCommands},);}
+		if(guildID2){await rest.put(Routes.applicationGuildCommands(clientID,guildID2), {body: devCommands},);}
 		console.log('Refresh completed.');
 
 	} catch (error) {
