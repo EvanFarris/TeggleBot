@@ -5,7 +5,11 @@
   "scripts": {
     "start": "node deploy-commands.js && node index.js"
   },
-  "author": "",
+  "author": "Evan Farris",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EvanFarris/TeggleBot.git"
+  },
   "license": "ISC",
   "keywords": [],
   "dependencies": {
