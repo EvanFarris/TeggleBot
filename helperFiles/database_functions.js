@@ -121,7 +121,7 @@ async function loadPreviousSubscriptions(client) {
 	let sName, sId, obj;
 	let curTime = Date.now();
 	
-	const cutoffTime = curTime - (1000 * 60 * 60 * 24 * 30);
+	const cutoffTime = curTime - (1000 * 86400 * 30);
 	
 	for(i = 0; i < rows.length; i++) {
 		obj = rows.at(i);
@@ -271,11 +271,11 @@ function checkIfGuildCanSubscribeToAnotherStreamer(gs_tableEntry) {
 
 async function twitchEventSubSubscribe(client, streamerId) {
 	try{
-		const onlineSubscription = await client.twitchListener.subscribeToStreamOnlineEvents(streamerId, esStreamOnlineEvent => {
+		const onlineSubscription = await client.twitchListener.onStreamOnline(streamerId, esStreamOnlineEvent => {
 			streamerNotification(client, esStreamOnlineEvent, true);
 		});
 
-		const offlineSubscription = await client.twitchListener.subscribeToStreamOfflineEvents(streamerId, esStreamOfflineEvent => {
+		const offlineSubscription = await client.twitchListener.onStreamOffline(streamerId, esStreamOfflineEvent => {
 			streamerNotification(client, esStreamOfflineEvent, false);
 		});
 
@@ -419,7 +419,9 @@ async function updateGuildSubs(client, gs_tableEntry, guildId, channelId, stream
 }
 
 async function streamerWentLive(client, streamEvent, streamerIcon, channelsToNotify, customMessages, customImages) {
-	const customMessageEmbed = await embedHelper.createLiveStreamEmbed(client, streamEvent, streamerIcon);
+	const liveStream = await getStream(client, streamEvent.broadcasterId);
+	const vodLink = await getVODLink(client, false, streamEvent.id, streamEvent.broadcasterId);
+	const customMessageEmbed = await embedHelper.createLiveStreamEmbed(streamEvent, streamerIcon, liveStream, vodLink);
 	const customEmbed = embedHelper.copy(customMessageEmbed);
 	customEmbed.setTitle(`${customMessageEmbed.data.author.name} | ${customMessageEmbed.data.title}`);
 	
@@ -485,20 +487,38 @@ async function streamerWentOffline(client, streamerId) {
 	}
 }
 
-async function getVODLink(client, vodExists, streamId, streamerId) {
-	let vod = null, vodObject = null, vodLink = ``;
-	if(!vodExists) {
-		let vodFilter = {period: `day`, type: `archive`, first: 1};
-		vod = await client.twitchAPI.videos.getVideosByUser(streamerId, vodFilter);
-		vodObject = (vod.data)[0];
+async function getStream(client, streamerId) {
+	let liveStream = null;
+	let maxAttempts = 3;
+	while(!liveStream && maxAttempts > 0) {
+		liveStream = await client.twitchAPI.streams.getStreamByUserId(streamerId);
+		if(!liveStream) {
+			await sleep(5000);
+			maxAttempts--;
+		}
 	}
-	if(vodObject && vodObject.streamId == streamId) {
-		vodLink = vodObject.url;
+	return liveStream;
+}
+
+async function getVODLink(client, vodExists, streamId, streamerId) {
+	if(vodExists) {return null;}
+	let vod = null, vodObject = null, vodLink = ``;
+	let vodFilter = {period: `day`, type: `archive`, first: 1};
+	let maxAttempts = 3;
+
+	while(!vodLink && maxAttempts > 0) {
+		({data: vod} = await client.twitchAPI.videos.getVideosByUser(streamerId, vodFilter));
+		if(vod && vod.length > 0){vodObject = vod[0];}
+		if(vodObject && vodObject.streamId == streamId) {vodLink = vodObject.url;}
+		else {
+			maxAttempts--;
+			await sleep(2000);
+		}
 	}
 	return vodLink;
 }
 
-async function editMessages (client, vodLink, channelSnowflakes) {
+async function editMessages(client, vodLink, channelSnowflakes) {
 	let channel, message, newEmbed;
 		channelSnowflakes.forEach(async (obj) => {
 			try{
@@ -516,4 +536,14 @@ async function editMessages (client, vodLink, channelSnowflakes) {
 			} catch (error) {console.log(error);}
 			
 		});
+}
+
+//Used to wait for a specified amount of time, as twitch caches need time to update 
+async function sleep(milliseconds) {
+	let currentTime = Date.now();
+	const stopTime = currentTime + milliseconds;
+	
+	while(currentTime < stopTime){
+		currentTime = Date.now();
+	}
 }

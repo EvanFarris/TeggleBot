@@ -15,7 +15,7 @@ If you don't want to host your own bot, or want to try mine out, invite my bot b
 After inviting the bot to the server, use /follow to get notifications. [Example Command](https://i.imgur.com/HB67Xlw.png)
 
 Fields
-	-url(Required): The url of the streamer you want to follow (https://twitch.tv/teggledev)
+	-url(Required): The url of the streamer you want to follow (ex: https://twitch.tv/teggledev)
 	-disc_channel(Required): The Discord channel you want to send stream notifications to. 
 	-message: The message to be sent with the notification, you can mention roles, @everyone, etc. 
 	-image: A url that directly links to an image to show with the notification. 
@@ -24,7 +24,7 @@ The Bot will reply with [a message that looks like this](https://i.imgur.com/90U
 
 After pressing the follow button, the bot will send [this message](https://i.imgur.com/mStE35v.png)
 
-And you should be all set, five Twitch streamers can be followed per server pre.
+And you should be all set, five Twitch streamers can be followed per server. [Example notification](https://i.imgur.com/SqKKciE.png)
 
 __Note: The bot must be in the channel and be able to send messages, otherwise no message will be sent.__
 ### Other commands
@@ -37,17 +37,18 @@ __Note: The bot must be in the channel and be able to send messages, otherwise n
 -/check_id			#Shows Guild id and channel id
 
 ## Why this bot was made
-The short answer is that the community server for my favorite streamer was using the massively popular Mee6 bot, and livestream notifications would take anywhere from 2-40 minutes late([Mee6](https://i.imgur.com/Af4dVaE.png) vs [TeggleBot](https://i.imgur.com/B4bsUpQ.png), so I wanted to see if I could do better. 
+The short answer is that the community server for my favorite streamer was using the massively popular Mee6 bot, and livestream notifications would take anywhere from 2-40 minutes to be sent([Mee6](https://i.imgur.com/Af4dVaE.png) vs [TeggleBot](https://i.imgur.com/B4bsUpQ.png), so I wanted to see if I could do better. 
 
 The long answer, in addition to the previous statement, is that Discord notifications in my opinion is superior than Twitch notifications. 
 ```
-I believe there is a different connotation with a notification coming from Discord and one coming from Twitch. Just like how the content difference between an email and a text exists, despite both being near-instant text-based messaging systems. Since Discord is a social platform, notifications are usually welcomed, as they either involve you, or are relevant to your interests. It's been so long since I've turned of Twitch notifications that I can't reliably remember my experience. However, looking at the settings on the web page, for follows, it is either all or nothing for notifications.
+I believe there is a different connotation with a notification coming from Discord and one coming from Twitch. Just like how the content difference between an email and a text exists, despite both being instant, text-based, messaging systems. Since Discord is a social platform, notifications are usually welcomed, as they either involve you, or are relevant to your interests. Twitch's system of follow notifications is all or nothing. So you can't limit the number of notifications you get, without unfollowing the streamers.
 ```
 Why didn't I just search for another person's bot to use? 
-```
-I wanted to learn how to make a Discord bot, and it's better to do something than nothing than all. In addition, in this case, making a competitive program is much easier than say, making the next AAA game. 
-``` 
-## Requirements
+-I wanted to learn how to make a Discord bot.
+-I felt that other implementations of stream notifications were barebones.
+-I didn't want all the extra features that I would never use or would have to pay for.
+
+## Requirements to host this bot
 This project is run on Ubuntu 22.04, with Node.js.
 
 There are six major components needed for this program to work
@@ -60,11 +61,11 @@ There are six major components needed for this program to work
 
 A domain is needed in cases where APIs require a redirect url to return the data requested from an API call. An individual IP address is normally not sufficient. Purchase one from a domain broker such as GoDaddy, Namecheap, Google Domains, etc.
 
-The SSL certificate is necessary, Twitch's API requires a redirect url to be ssl certified to return data. __It can not be self-signed__, but you can get one for free from Let's Encrypt (link above). 
+The SSL certificate is necessary, Twitch's API requires a redirect url to be ssl certified to return data. __It can not be a self-signed ssl certificate__, but you can get one for free from Let's Encrypt (link above). 
 
 The reverse proxy in this use case connects the request to the application, redirecting the request to the port number the program is listening to on localhost.
 
-Since we need to use Discord's API to add the playlist to a user's account, we need to register an account, and create an application. This allows us to interact with the API, through the use of the application id and secret.
+Since we need to use Discord's API to add the playlist to a user's account, we need to register an account and create an application. This allows us to interact with the API, through the use of the application id and secret.
 
 We also need an account for Twitch as well,
 
@@ -98,8 +99,8 @@ To start the bot, you can run either of the two lines below, the first launches 
 npm start
 (npm start &)
 ```
-You can also use the option below to empty all the databases when starting the bot.
-> --force
+You can also use the --force option below to empty all the databases when starting the bot.
+> npm start --force
 
 ## The Bot, explained
 ### Index.js
@@ -143,7 +144,7 @@ There are three folders with commands
 ## Pitfalls and addressing those pitfalls
 The Twitch.tv API is harder to work than Discord. The major reason is because it required a webserver to send API replies, as opposed to (presumably) websockets with Discord. In addition, Discord.js has a wonderful guide, on top of great documentation, opposed to the twitch library. However, it's not a major gripe, as both libraries are open-source and community made, and their work eliminates a ton of work that is otherwise needed.
 
-It was impossible to consistently get the correct stream thumbnail. According to most posts on Twitch's dev forum, the problem is a caching problem. The eventsub notification is sent a lot faster than twitch's cdn caches updates. So a lot of the time, a default image is sent. I don't think this is the full story, however. Sometimes the image would be correctly displayed for a streamer for a few days, then upon a restart with no change, it wouldn't work. Also, I noticed that sometimes, between four different platforms(Windows 10, Windows 11, Android, and the web client), the image would work on some platforms, while not for the other platforms, even when having different accounts up at the same time. Asking on the Discord.js server, it was just something only Discord could solve. So I opted to remove the stream thumbnail for the time being, and allow for the user to add their own image if they want, if it's hosted on some other website instead.
+It was impossible to consistently get the correct stream thumbnail. According to most posts on Twitch's dev forum, the problem is a caching problem. The eventsub notification is sent a lot faster than twitch's cdn caches updates. So a lot of the time, a default image is sent. I don't think this is the full story, however. Sometimes the image would be correctly displayed for a streamer for a few days, then upon a restart with no change, it wouldn't work. Also, I noticed that sometimes, between four different platforms(Windows 10, Windows 11, Android, and the web client), the image would work on some platforms but not on other platforms. I asked this question on the Discord.js server, and the response was that it was just something only Discord could solve. So with the caching problem from Twitch, and the display error from Discord, I opted to remove the stream thumbnail for the time being, replacing it with a user supplied image, if the image is hosted on some other website. 
 
 ## Learned
 1. Explore how Discord bots work
@@ -161,9 +162,6 @@ It was impossible to consistently get the correct stream thumbnail. According to
 3. Support more streaming platforms
 4. Revisit stream thumbnails not being consistent
 
-## Was this worth?
-Well, the community discord that started this quest just got rid of Mee6 the other day, and their performance matches mine now (Stream is live for ~2 minutes). But I like having the stream status and vod link shown over the competitors. I did end up smarter and learned a lot that even helped me with other projects. So I'd say it's totally worth.
-
 ## Nginx setup
 1. Install nginx
 2. Configure /etc/nginx/sites-available/default to listen on ssl, install the ssl certificate, and setup the reverse proxy
@@ -171,12 +169,12 @@ Well, the community discord that started this quest just got rid of Mee6 the oth
 server {
 	listen 443 ssl;
 	listen [::]:443 ssl;
-	server_name __DOMAIN_NAME__;
+	server_name DOMAIN_NAME;
 	ssl_certificate /etc/letsencrypt/live/certificate-folder/fullchai-/change_message	#Change the message that gets sent with the notification
 n.pem;
 	ssl_certificate /etc/letsencrypt/live/certificate-folder/privkey.pem;
 	location /spotify {
-		proxy_pass http://127.0.0.1:__PORT_NUMBER__/;
+		proxy_pass http://127.0.0.1:PORT_NUMBER/;
 	}
 }
 ```
@@ -195,7 +193,3 @@ sudo ufw allow `Nginx Full`
 ```
 
 5. If using a VM on a physical computer on your home network, you may have to port forward any traffic on 443 to your vm's internal network ip (192.168.x.x)
-
-
-## Thank you
-Thanks to the Discord.js community discord as well as the Twitch API discord for being an archive of knowledge, as well as d-fischer who created [the twurple library](https://twurple.js.org)

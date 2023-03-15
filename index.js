@@ -7,8 +7,8 @@ const { DISCORD_BOT_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITC
 const Sequelize = require('sequelize');
 
 const { ApiClient } = require('@twurple/api');
-const { ClientCredentialsAuthProvider } = require('@twurple/auth');
-const { DirectConnectionAdapter, EventSubListener, ReverseProxyAdapter } = require('@twurple/eventsub');
+const { AppTokenAuthProvider } = require('@twurple/auth');
+const { DirectConnectionAdapter, EventSubHttpListener, ReverseProxyAdapter } = require('@twurple/eventsub-http');
 
 const force = process.env.npm_config_force || false;
 const dbHelper = require(`./helperFiles/database_functions.js`);
@@ -120,7 +120,7 @@ async function main() {
 
 	console.log(`Making facial expressions at Twitch . . .`);
 	//Setup the twitch client with auto-refreshing token.
-	const authProvider = new ClientCredentialsAuthProvider(twitchClientId, twitchClientSecret);
+	const authProvider = new AppTokenAuthProvider(twitchClientId, twitchClientSecret);
 
 	const apiClient = new ApiClient({ authProvider, logger: {minLevel:'debug'} });
 	client.twitchAPI = apiClient;
@@ -137,12 +137,12 @@ async function main() {
 	//Unsubscribe all the events if it's passed in from the command line.
 	if(force) {await apiClient.eventSub.deleteAllSubscriptions();}
 
-	const twitchListener = new EventSubListener({apiClient, adapter: RPAdapter, secret, strictHostCheck: true});
+	const twitchListener = new EventSubHttpListener({apiClient, adapter: RPAdapter, secret, strictHostCheck: true, legacySecrets: true});
 	client.twitchListener = twitchListener;
 
 	//Start the two listeners.
 	await dbHelper.loadPreviousSubscriptions(client);
-	await twitchListener.listen();
+	await twitchListener.start();
 	await client.login(discordToken);
 }
 

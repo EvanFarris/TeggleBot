@@ -21,33 +21,13 @@ function createEmbed(title, description) {
 }
 
 //Creates the embed for live stream notifications. 
-async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
+async function createLiveStreamEmbed(streamEvent, streamerIcon, liveStream, vodLink) {
 	const lsEmbed = new EmbedBuilder()
 		.setColor(`#474354`)
-		.setTitle(`${streamEvent.broadcasterName}'s stream`)
+		.setTitle(`${streamEvent.broadcasterDisplayName}'s stream`)
 		.setURL(`https://twitch.tv/${streamEvent.broadcasterName}`)
 		.setAuthor({name: streamEvent.broadcasterDisplayName, iconURL: streamerIcon, url: `https://twitch.tv/${streamEvent.broadcasterName}`})
 		.setTimestamp();
-	
-	let liveStream = null;
-	let maxAttempts = 5;
-	let vod = null;
-	let vodFilter = {period: `day`, type: `archive`, first: 1};
-
-	//Get livestream and vod data from Twitch's API. Call may return null, so this loop may take up to (maxAttempts + await time) * 5 seconds.
-	//Normally loop fires only once.
-	while((!liveStream || !vod) && maxAttempts > 0) {
-		if(!liveStream){
-			liveStream = await client.twitchAPI.streams.getStreamByUserId(streamEvent.broadcasterId);
-		}
-		if(!vod){
-			vod = await client.twitchAPI.videos.getVideosByUser(streamEvent.broadcasterId, vodFilter);
-		}
-		if(!liveStream || !vod){
-			await sleep(5000);
-			maxAttempts--;
-		}
-	}
 
 	//If we get livestream or vod data, add it to the embed.
 	try{
@@ -58,11 +38,8 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 				lsEmbed.addFields({name: `Game`, value: liveStream.gameName, inline: true});
 			}
 		}
-		if(vod) {
-			const vodObject = (vod.data)[0];
-			if(vodObject.streamId == streamEvent.id) {
-				lsEmbed.addFields({name: `Link to VOD`, value: `[Click here](${vodObject.url})`, inline: true});
-			}
+		if(vodLink) {
+			lsEmbed.addFields({name: `Link to VOD`, value: `[Click here](${vodLink})`, inline: true});
 		}
 	} catch(error) {
 		console.log(`~~createLiveStreamEmbed~~\n${error}`);
@@ -163,16 +140,6 @@ function createCheckStreamerEmbed(streamerUsername, streamerDisplayName, streame
 	}
 
 	return embeddedMessage;
-}
-
-//Used to wait for a specified amount of time, as twitch caches need time to update 
-async function sleep(milliseconds) {
-	let currentTime = Date.now();
-	const stopTime = currentTime + milliseconds;
-	
-	while(currentTime < stopTime){
-		currentTime = Date.now();
-	}
 }
 
 //Component collector for string select menus (unfollow.js, change_message.js)
