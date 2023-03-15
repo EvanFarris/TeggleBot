@@ -83,7 +83,7 @@ async function validateStreamerExists(interaction, streamerUsername, website) {
 async function checkTwitchStreamerExistsLocal(client, streamerUsername) {
 	try {
 		let ts_streamer = await client.dbs.twitchstreamers.findOne({ where: { streamerUsername: streamerUsername }});
-
+		
 		if(ts_streamer) {return ts_streamer;}
 		else {return null;}
 	} catch (error) {

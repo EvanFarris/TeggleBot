@@ -2,13 +2,13 @@ require('dotenv').config();
 
 const fs = require('node:fs');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const { DISCORD_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString, SEQUELIZE_USER: sq_user, SEQUELIZE_PASS: sq_pass, HOST_NAME: hName , ADAPTER_PORT: adapterPort, PATH_PREFIX: pathPrefix, DB_NAME: dbName, DB_HOST: dbHost, DB_DIALECT: dbDialect, DB_STORAGE: dbStorage} = process.env;
+const { DISCORD_BOT_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString, SEQUELIZE_USER: sq_user, SEQUELIZE_PASS: sq_pass, HOST_NAME: hName , ADAPTER_PORT: adapterPort, PATH_PREFIX: pathPrefix, DB_NAME: dbName, DB_HOST: dbHost, DB_DIALECT: dbDialect, DB_STORAGE: dbStorage} = process.env;
 
 const Sequelize = require('sequelize');
 
 const { ApiClient } = require('@twurple/api');
-const { ClientCredentialsAuthProvider } = require('@twurple/auth');
-const { DirectConnectionAdapter, EventSubListener, ReverseProxyAdapter } = require('@twurple/eventsub');
+const { AppTokenAuthProvider } = require('@twurple/auth');
+const { DirectConnectionAdapter, EventSubHttpListener, ReverseProxyAdapter } = require('@twurple/eventsub-http');
 
 const force = process.env.npm_config_force || false;
 const dbHelper = require(`./helperFiles/database_functions.js`);
@@ -94,7 +94,13 @@ async function main() {
 		streamerId: Sequelize.STRING,
 		streamerDisplayName: Sequelize.STRING,
 		customMessage: Sequelize.STRING,
+	});
 
+	const STREAM_TEMP = sequelize.define(`stream_temp`, {
+		broadcasterId: Sequelize.STRING,
+		streamId: Sequelize.STRING,
+		messagePairs: Sequelize.STRING,
+		vodExists: Sequelize.BOOLEAN,
 	});
 
 	//Attach the database + tables to the discord client so the discord commands can access the related tables.
@@ -102,9 +108,11 @@ async function main() {
 	client.dbs.guildsubs = GUILD_SUBS;
 	client.dbs.twitchstreamers = TWITCH_STREAMERS;
 	client.dbs.temp = SUB_TEMP;
+	client.dbs.streamtemp = STREAM_TEMP;
 	client.dbs.guildsubs.sync({force: force});
 	client.dbs.twitchstreamers.sync({force: force});
 	client.dbs.temp.sync({force: true});
+	client.dbs.streamtemp.sync({force: true});
 	//Create a map and attach it to client. Initialize it in ready.js
 	client.hmap = new Map();
 	client.mapChangesToBe = new Map();
@@ -112,7 +120,7 @@ async function main() {
 
 	console.log(`Making facial expressions at Twitch . . .`);
 	//Setup the twitch client with auto-refreshing token.
-	const authProvider = new ClientCredentialsAuthProvider(twitchClientId, twitchClientSecret);
+	const authProvider = new AppTokenAuthProvider(twitchClientId, twitchClientSecret);
 
 	const apiClient = new ApiClient({ authProvider, logger: {minLevel:'debug'} });
 	client.twitchAPI = apiClient;
@@ -129,12 +137,12 @@ async function main() {
 	//Unsubscribe all the events if it's passed in from the command line.
 	if(force) {await apiClient.eventSub.deleteAllSubscriptions();}
 
-	const twitchListener = new EventSubListener({apiClient, adapter: RPAdapter, secret, strictHostCheck: true});
+	const twitchListener = new EventSubHttpListener({apiClient, adapter: RPAdapter, secret, strictHostCheck: true, legacySecrets: true});
 	client.twitchListener = twitchListener;
 
 	//Start the two listeners.
 	await dbHelper.loadPreviousSubscriptions(client);
-	await twitchListener.listen();
+	await twitchListener.start();
 	await client.login(discordToken);
 }
 

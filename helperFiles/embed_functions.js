@@ -21,48 +21,25 @@ function createEmbed(title, description) {
 }
 
 //Creates the embed for live stream notifications. 
-async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
+async function createLiveStreamEmbed(streamEvent, streamerIcon, liveStream, vodLink) {
 	const lsEmbed = new EmbedBuilder()
 		.setColor(`#474354`)
-		.setTitle(`${streamEvent.broadcasterName}'s stream`)
+		.setTitle(`${streamEvent.broadcasterDisplayName}'s stream`)
 		.setURL(`https://twitch.tv/${streamEvent.broadcasterName}`)
 		.setAuthor({name: streamEvent.broadcasterDisplayName, iconURL: streamerIcon, url: `https://twitch.tv/${streamEvent.broadcasterName}`})
 		.setTimestamp();
-	
-	let liveStream = null;
-	let maxAttempts = 5;
-	let vod = null;
-	let vodFilter = {period: `day`, type: `archive`, first: 1};
 
-	//Get livestream and vod data from Twitch's API. Call may return null, so this loop may take up to (maxAttempts * 5) seconds.
-	while((!liveStream || !vod) && maxAttempts > 0) {
-		if(!liveStream){
-			liveStream = await client.twitchAPI.streams.getStreamByUserId(streamEvent.broadcasterId);
-		}
-		if(!vod){
-			vod = await client.twitchAPI.videos.getVideosByUser(streamEvent.broadcasterId, vodFilter);
-		}
-		if(!liveStream || !vod){
-			await sleep(5000);
-			maxAttempts--;
-		}
-	}
-
+	//If we get livestream or vod data, add it to the embed.
 	try{
+		lsEmbed.addFields({name: `Stream Status`, value: `✅ Live ✅`});
 		if(liveStream) {
 			lsEmbed.setTitle(liveStream.title);
 			if(liveStream.gameName){
 				lsEmbed.addFields({name: `Game`, value: liveStream.gameName, inline: true});
 			}
 		}
-		if(vod) {
-			const vodObject = (vod.data)[0];
-			const currentTime = Date.now();
-			const vodCreationTime = new Date(vodObject.creationDate);
-
-			if(currentTime - vodCreationTime < 1000 * 60 * 3) {
-				lsEmbed.addFields({name: `Link to VOD`, value: `[Click here](${vodObject.url})`, inline: true});
-			}
+		if(vodLink) {
+			lsEmbed.addFields({name: `Link to VOD`, value: `[Click here](${vodLink})`, inline: true});
 		}
 	} catch(error) {
 		console.log(`~~createLiveStreamEmbed~~\n${error}`);
@@ -71,7 +48,7 @@ async function createLiveStreamEmbed(client, streamEvent, streamerIcon) {
 	return lsEmbed;
 }
 
-//Creates a select menu
+//Creates a select menu with a customId for interactionCreate to handle and route to the right command.
 function getSelectMenu(gs_tableEntry, customId) {
 	let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
 	let names = jsonParsed.streamerUserNames;
@@ -94,7 +71,7 @@ function getSelectMenu(gs_tableEntry, customId) {
 	return (new ActionRowBuilder().addComponents(selectMenuOptions));
 }
 
-//Decomposes the value returned from a stringSelectMenu
+//Decomposes the value returned from a stringSelectMenu into usable data.
 function decomposeSelected(selectedValue) {
 	let pipeIndexes = selectedValue.split(`|`);
 	let streamerId = pipeIndexes[0];
@@ -165,16 +142,6 @@ function createCheckStreamerEmbed(streamerUsername, streamerDisplayName, streame
 	return embeddedMessage;
 }
 
-//Used to wait for a specified amount of time, as twitch caches need time to update 
-async function sleep(milliseconds) {
-	let currentTime = Date.now();
-	const stopTime = currentTime + milliseconds;
-	
-	while(currentTime < stopTime){
-		currentTime = Date.now();
-	}
-}
-
 //Component collector for string select menus (unfollow.js, change_message.js)
 async function startCollector(interaction, customId, messageSent){
 	const filter = i => i.customId == `${customId}`;
@@ -195,6 +162,7 @@ async function startCollector(interaction, customId, messageSent){
 	} catch (error) {console.log(error);}
 }
 
+//Shortcut
 function copy(embedToCopy) {
 	return EmbedBuilder.from(embedToCopy);
 }

@@ -121,7 +121,7 @@ async function loadPreviousSubscriptions(client) {
 	let sName, sId, obj;
 	let curTime = Date.now();
 	
-	const cutoffTime = curTime - (1000 * 60 * 60 * 24 * 30);
+	const cutoffTime = curTime - (1000 * 86400 * 30);
 	
 	for(i = 0; i < rows.length; i++) {
 		obj = rows.at(i);
@@ -271,11 +271,11 @@ function checkIfGuildCanSubscribeToAnotherStreamer(gs_tableEntry) {
 
 async function twitchEventSubSubscribe(client, streamerId) {
 	try{
-		const onlineSubscription = await client.twitchListener.subscribeToStreamOnlineEvents(streamerId, esStreamOnlineEvent => {
+		const onlineSubscription = await client.twitchListener.onStreamOnline(streamerId, esStreamOnlineEvent => {
 			streamerNotification(client, esStreamOnlineEvent, true);
 		});
 
-		const offlineSubscription = await client.twitchListener.subscribeToStreamOfflineEvents(streamerId, esStreamOfflineEvent => {
+		const offlineSubscription = await client.twitchListener.onStreamOffline(streamerId, esStreamOfflineEvent => {
 			streamerNotification(client, esStreamOfflineEvent, false);
 		});
 
@@ -287,78 +287,25 @@ async function twitchEventSubSubscribe(client, streamerId) {
 }
 
 async function streamerNotification(client, streamEvent, isLiveNotification) {
-	try {
-		let dbEntry = await client.dbs.twitchstreamers.findOne({ where: { streamerId: `${streamEvent.broadcasterId}`}});
-		if (dbEntry) {
+	let dbEntry = await client.dbs.twitchstreamers.findOne({ where: { streamerId: `${streamEvent.broadcasterId}`}});
+	if (dbEntry) {
+		let curTime = `${Date.now()}`;
+		const {streamerIcon, streamerIconLastCheckedAt} = await getStreamerIcon(client, dbEntry, streamEvent.broadcasterId, curTime);
+		
+		if(isLiveNotification) {
 			//Get all of the guild channels that we need to notify, update last time online
 			const followersInfoParsed = JSON.parse(dbEntry.get(`followersInfo`));
 			let channelsToNotify = followersInfoParsed.followers;
 			let customMessages = followersInfoParsed.customMessages;
 			let customImages = followersInfoParsed.customImages;
-			let curTime = `${Date.now()}`;
-			let initialLength = channelsToNotify.length;
-			const {streamerIcon, streamerIconLastCheckedAt} = await getStreamerIcon(client, dbEntry, streamEvent.broadcasterId, curTime);
-			
-			//Default message to send discord channel
-			let channel;
-			if(isLiveNotification) {
-				const customMessageEmbed = await embedHelper.createLiveStreamEmbed(client, streamEvent, streamerIcon);
-				const customEmbed = embedHelper.copy(customMessageEmbed);
-				customEmbed.setTitle(`${customMessageEmbed.data.author.name} | ${customMessageEmbed.data.title}`);
-				
-				for( i = 0; i < channelsToNotify.length; i++ ) {
-					channel = await client.channels.cache.get(`${channelsToNotify[i]}`);
-					if(channel && channel.permissionsFor(client.user).has(["ViewChannel","SendMessages","EmbedLinks"])) {
-						try {
-							if(customMessages[i].length != 0) {
-								try{
-									customMessageEmbed.setImage(customImages[i]);
-									channel.send({content: customMessages[i], embeds: [customMessageEmbed]});
-								} catch {
-									customMessageEmbed.setImage(null);
-									const errorMsg = `***Image link for this user is broken. Change to a working link with /change_image***\n${customMessages[i]}`
-									channel.send({content: errorMsg, embeds: [customMessageEmbed]});
-								}
-								
-							}
-							else {	
-								try{
-									customEmbed.setImage(customImages[i]);
-									channel.send({embeds: [customEmbed]});
-								} catch {
-									customEmbed.setImage(null);
-									channel.send({content: `***Image link for this user is broken. Change to a working link with /change_image***`, embeds: [customEmbed]});
-								}
-							}
-						} catch (error) {
-							console.log(`Error sending notification\n${error}`);
-						}
-					}
-				}
-			} else {
-				msg = `${streamEvent.broadcasterDisplayName} went offline!`;
-				for( i = 0; i < channelsToNotify.length; i++ ) {
-					channel = await client.channels.cache.get(`${channelsToNotify[i]}`);
-					try{
-						if(channel && channel.permissionsFor(client.user).has(["ViewChannel","SendMessages","EmbedLinks"])) {channel.send(msg);}
-					} catch (error) {
-						console.log(`Error sending notification\n${error}`);
-					}	
-				}
-			}
-			
-			if(channelsToNotify.length != initialLength) {
-				let channelsUpdated = JSON.stringify({ "followers" : channelsToNotify, "customMessages" : customMessages, "customImages": customImages});
-				dbEntry.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, followersInfo: `${channelsUpdated}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`});
-			} else {
-				dbEntry.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`});
-			}
+			streamerWentLive(client, streamEvent, streamerIcon, channelsToNotify, customMessages, customImages);
 		} else {
-			console.log("Streamer Notification triggered, but streamer was not found.");
+			streamerWentOffline(client, streamEvent.broadcasterId);
 		}
-			
-	} catch (error) {
-		console.log(`~~~~streamerNotification~~~~\n${error}\n`);
+		
+		dbEntry.update({lastOnline: `${curTime}`, streamerIcon: `${streamerIcon}`, streamerIconLastCheckedAt: `${streamerIconLastCheckedAt}`});
+	} else {
+		console.log("Streamer Notification triggered, but streamer was not found.");
 	}
 }
 
@@ -468,5 +415,135 @@ async function updateGuildSubs(client, gs_tableEntry, guildId, channelId, stream
 	} catch (error) {
 		console.log(`~~~~updateGuildSubs~~~~\n${error}`);
 		return -1;
+	}
+}
+
+async function streamerWentLive(client, streamEvent, streamerIcon, channelsToNotify, customMessages, customImages) {
+	const liveStream = await getStream(client, streamEvent.broadcasterId);
+	const vodLink = await getVODLink(client, false, streamEvent.id, streamEvent.broadcasterId);
+	const customMessageEmbed = await embedHelper.createLiveStreamEmbed(streamEvent, streamerIcon, liveStream, vodLink);
+	const customEmbed = embedHelper.copy(customMessageEmbed);
+	customEmbed.setTitle(`${customMessageEmbed.data.author.name} | ${customMessageEmbed.data.title}`);
+	
+	let messagesSent = [];
+	let messageSent, content, embed, channel;
+	for( i = 0; i < channelsToNotify.length; i++ ) {
+		channel = await client.channels.fetch(channelsToNotify[i]);
+		//If the channel exists, and the bot is in the channel and can send messages, then proceed.
+		if(channel && channel.permissionsFor(client.user).has(["ViewChannel","SendMessages","EmbedLinks"])) {
+			if(customMessages[i].length != 0) {
+				content = customMessages[i];
+				embed = customMessageEmbed;
+			} else {
+				content = ``;
+				embed = customEmbed;
+			}
+			
+			//Image is user defined. So if an error is thrown, the catch sends message + embed without the image.
+			try{
+				embed.setImage(customImages[i]);
+				messageSent = await channel.send({content: content, embeds: [embed]});
+				messagesSent.push({channelId: channelsToNotify[i], snowflake: messageSent.id});
+			} catch {
+				content = `***Image link for this user is broken. Change to a working link with /change_image***\n` + content;
+				embed.setImage(null);
+				messageSent = await channel.send({content: content, embeds: [embed]});
+				messagesSent.push({channelId: channelsToNotify[i], snowflake: messageSent.id});
+			}
+		}
+	}
+	let vodExists = false;
+	if(customEmbed.data.fields[customEmbed.data.fields.length - 1].name == `Link to VOD`) {vodExists = true;}
+	//Save channelId + Message Id objects to db for streamerWentOffline to use.
+	await client.dbs.streamtemp.create({
+		broadcasterId: streamEvent.broadcasterId,
+		streamId: streamEvent.id,
+		messagePairs: JSON.stringify(messagesSent),
+		vodExists: vodExists
+	});
+}
+
+async function streamerWentOffline(client, streamerId) {
+	//Attempt to get info from database. 
+	let streamThatEnded = await client.dbs.streamtemp.findOne({ where: { broadcasterId: streamerId }});
+	if(streamThatEnded) {
+		let channelSnowflakes = JSON.parse(streamThatEnded.messagePairs);
+		let streamId = streamThatEnded.streamId;
+		let vodExists = streamThatEnded.vodExists;
+		streamThatEnded.destroy();
+
+		let vodLink = await getVODLink(client, vodExists, streamId, streamerId);
+	
+		editMessages(client, vodLink, channelSnowflakes);
+
+		if(!vodLink && !vodExists){
+			setTimeout(async () => {
+				let vl = await getVODLink(client, vodExists, streamId, streamerId);
+				if(vl) {
+					editMessages(client, vl, channelSnowflakes);
+				}	
+			},300000);
+		}		
+	}
+}
+
+async function getStream(client, streamerId) {
+	let liveStream = null;
+	let maxAttempts = 3;
+	while(!liveStream && maxAttempts > 0) {
+		liveStream = await client.twitchAPI.streams.getStreamByUserId(streamerId);
+		if(!liveStream) {
+			await sleep(5000);
+			maxAttempts--;
+		}
+	}
+	return liveStream;
+}
+
+async function getVODLink(client, vodExists, streamId, streamerId) {
+	if(vodExists) {return null;}
+	let vod = null, vodObject = null, vodLink = ``;
+	let vodFilter = {period: `day`, type: `archive`, first: 1};
+	let maxAttempts = 3;
+
+	while(!vodLink && maxAttempts > 0) {
+		({data: vod} = await client.twitchAPI.videos.getVideosByUser(streamerId, vodFilter));
+		if(vod && vod.length > 0){vodObject = vod[0];}
+		if(vodObject && vodObject.streamId == streamId) {vodLink = vodObject.url;}
+		else {
+			maxAttempts--;
+			await sleep(2000);
+		}
+	}
+	return vodLink;
+}
+
+async function editMessages(client, vodLink, channelSnowflakes) {
+	let channel, message, newEmbed;
+		channelSnowflakes.forEach(async (obj) => {
+			try{
+				channel = await client.channels.fetch(obj.channelId);
+				if(channel && channel.permissionsFor(client.user).has(["ViewChannel","SendMessages","EmbedLinks"])) {
+					message = await channel.messages.fetch(obj.snowflake);
+					if(message && message.editable) {
+						newEmbed = embedHelper.copy(message.embeds[0]);
+						newEmbed.setURL(newEmbed.data.url + `/videos`);
+						newEmbed.data.fields[0] = {name: `Stream Status` , value: `❌ Ended ❌`, inline: false};
+						if(vodLink) {newEmbed.addFields({name: `Link to VOD`, value: `[Click here](${vodLink})`, inline: true})}
+						await message.edit({embeds: [newEmbed]});
+					}
+				}
+			} catch (error) {console.log(error);}
+			
+		});
+}
+
+//Used to wait for a specified amount of time, as twitch caches need time to update 
+async function sleep(milliseconds) {
+	let currentTime = Date.now();
+	const stopTime = currentTime + milliseconds;
+	
+	while(currentTime < stopTime){
+		currentTime = Date.now();
 	}
 }
