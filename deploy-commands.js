@@ -31,7 +31,7 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
 	try {
 		console.log('Refreshing application (/) commands...');
 		//Global commands
-		await rest.put(Routes.applicationCommands(clientID), {body: commands},);
+		await rest.put(Routes.applicationCommands(clientID, {body: commands},);
 		//Sends only devCommands to these test guilds
 		if(guildID){await rest.put(Routes.applicationGuildCommands(clientID,guildID), {body: devCommands},);}
 		if(guildID2){await rest.put(Routes.applicationGuildCommands(clientID,guildID2), {body: devCommands},);}
