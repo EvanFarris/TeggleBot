@@ -2,11 +2,11 @@
 ## Purpose
 Create a Discord Bot that notifies text channels when a Twitch.tv streamer goes live.
 ## Perks over competitors
--Setup is completely in Discord, no web interface. 
--Every field can be changed (Change which channel gets notified, message that gets sent with the embed, image that is sent in the embed)
--Stream Status is shown and updated when streamer goes online or offline
--Link to the VOD is added, if VODs are enabled.
--Free, built only for notifying streams.
+- Setup is completely in Discord, no web interface. 
+- Every field can be changed (Change which channel gets notified, message that gets sent with the embed, image that is sent in the embed)
+- Stream Status is shown and updated when streamer goes online or offline
+- Link to the VOD is added, if VODs are enabled.
+- Free, built only for notifying streams.
 ## Try out the bot
 If you don't want to host your own bot, or want to try mine out, invite my bot below, read command information.
 ### Invitation link
@@ -15,10 +15,10 @@ If you don't want to host your own bot, or want to try mine out, invite my bot b
 After inviting the bot to the server, use /follow to get notifications. [Example Command](https://i.imgur.com/HB67Xlw.png)
 
 Fields
-	-url(Required): The url of the streamer you want to follow (ex: https://twitch.tv/teggledev)
-	-disc_channel(Required): The Discord channel you want to send stream notifications to. 
-	-message: The message to be sent with the notification, you can mention roles, @everyone, etc. 
-	-image: A url that directly links to an image to show with the notification. 
+- url(Required): The url of the streamer you want to follow (ex: https://twitch.tv/teggledev)
+- disc_channel(Required): The Discord channel you want to send stream notifications to. 
+- message: The message to be sent with the notification, you can mention roles, @everyone, etc. 
+- image: A url that directly links to an image to show with the notification. 
 
 The Bot will reply with [a message that looks like this](https://i.imgur.com/90UZvwe.png), you will have 15 seconds to confirm that this is the correct streamer (click the blue header to open the channel), before it expires, and you will have to re-enter the command.
 
@@ -28,13 +28,13 @@ And you should be all set, five Twitch streamers can be followed per server. [Ex
 
 __Note: The bot must be in the channel and be able to send messages, otherwise no message will be sent.__
 ### Other commands
--/unfollow			#Reverse of /follow, stops notifications from happening
--/following			#Show every channel you follow
--/change_channel	#Change the channel that a specific streamer's notifications are sent to
--/change_image		#Change the image that gets shown with the notification
--/change_message	#Change the message that gets sent with the notification
--/stats				#Shows stats about the bot
--/check_id			#Shows Guild id and channel id
+- /unfollow			#Reverse of /follow, stops notifications from happening
+- /following			#Show every channel you follow
+- /change_channel		#Change the channel that a specific streamer's notifications are sent to
+- /change_image			#Change the image that gets shown with the notification
+- /change_message		#Change the message that gets sent with the notification
+- /stats			#Shows stats about the bot
+- /check_id			#Shows Guild id and channel id
 
 ## Why this bot was made
 The short answer is that the community server for my favorite streamer was using the massively popular Mee6 bot, and livestream notifications would take anywhere from 2-40 minutes to be sent([Mee6](https://i.imgur.com/Af4dVaE.png) vs [TeggleBot](https://i.imgur.com/B4bsUpQ.png), so I wanted to see if I could do better. 
@@ -44,9 +44,9 @@ The long answer, in addition to the previous statement, is that Discord notifica
 I believe there is a different connotation with a notification coming from Discord and one coming from Twitch. Just like how the content difference between an email and a text exists, despite both being instant, text-based, messaging systems. Since Discord is a social platform, notifications are usually welcomed, as they either involve you, or are relevant to your interests. Twitch's system of follow notifications is all or nothing. So you can't limit the number of notifications you get, without unfollowing the streamers.
 ```
 Why didn't I just search for another person's bot to use? 
--I wanted to learn how to make a Discord bot.
--I felt that other implementations of stream notifications were barebones.
--I didn't want all the extra features that I would never use or would have to pay for.
+- I wanted to learn how to make a Discord bot.
+- I felt that other implementations of stream notifications were barebones.
+- I didn't want all the extra features that I would never use or would have to pay for.
 
 ## Requirements to host this bot
 This project is run on Ubuntu 22.04, with Node.js.
@@ -137,9 +137,9 @@ ready.js is fired after Client.listen finishes and is ready to receive events.
 ### Slash Commands
 All interactions with the bot are initially started with a slash command, the bot does not read any messages.
 There are three folders with commands
--devCommands: This folder has commands that only work in the test guilds you set in .env, as they shouldn't be available to the public.
--safeCommands: The commands in here are the few commands that don't modify anything in the database, so they can be called by anybody, at any time.
--commands: Commands that alter entries in the database. These are callable only by people with at least one of these three permissions: Administrator, ManageGuild, or ManageWebhooks. In addition, only one command from this folder can be processed at a time, in order to prevent race conditions.
+- devCommands: This folder has commands that only work in the test guilds you set in .env, as they shouldn't be available to the public.
+- safeCommands: The commands in here are the few commands that don't modify anything in the database, so they can be called by anybody, at any time.
+- commands: Commands that alter entries in the database. These are callable only by people with at least one of these three permissions: Administrator, ManageGuild, or ManageWebhooks. In addition, only one command from this folder can be processed at a time, in order to prevent race conditions.
 
 ## Pitfalls and addressing those pitfalls
 The Twitch.tv API is harder to work than Discord. The major reason is because it required a webserver to send API replies, as opposed to (presumably) websockets with Discord. In addition, Discord.js has a wonderful guide, on top of great documentation, opposed to the twitch library. However, it's not a major gripe, as both libraries are open-source and community made, and their work eliminates a ton of work that is otherwise needed.
