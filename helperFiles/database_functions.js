@@ -298,7 +298,9 @@ async function streamerNotification(client, streamEvent, isLiveNotification) {
 			let channelsToNotify = followersInfoParsed.followers;
 			let customMessages = followersInfoParsed.customMessages;
 			let customImages = followersInfoParsed.customImages;
+
 			streamerWentLive(client, streamEvent, streamerIcon, channelsToNotify, customMessages, customImages);
+			
 		} else {
 			streamerWentOffline(client, streamEvent.broadcasterId);
 		}
@@ -420,14 +422,37 @@ async function updateGuildSubs(client, gs_tableEntry, guildId, channelId, stream
 
 async function streamerWentLive(client, streamEvent, streamerIcon, channelsToNotify, customMessages, customImages) {
 	const liveStream = await getStream(client, streamEvent.broadcasterId);
-	const vodLink = await getVODLink(client, false, streamEvent.id, streamEvent.broadcasterId);
+	if(!liveStream){return;}
+	let vodLink = await getVODLink(client, streamEvent.id, streamEvent.broadcasterId);
+	const streamURL = "twitch.tv/" + streamEvent.broadcasterName;
+	//In the case of a streamer restarting the stream within a certain timeframe and number of restarts, just edit the previous message.
+	let recentlyStreamed = await client.dbs.streamtemp.findOne({ where: { broadcasterId: streamEvent.broadcasterId }});
+	if(recentlyStreamed && recentlyStreamed.vods.split(',').length < 10){
+		const vods = recentlyStreamed.vods.split(',');
+		const vodTimeStamps = recentlyStreamed.vodTimeStamps.split(',');
+		if(vodLink){
+			vods.push(vodLink);
+			vodTimeStamps.push("Latest VOD");
+			recentlyStreamed.vods = vods.join(',');
+			recentlyStreamed.vodTimeStamps = vodTimeStamps.join(',');
+		}
+		recentlyStreamed.isLive = true;
+		recentlyStreamed.streamStart = new Date();
+		await recentlyStreamed.save();
+		const channelSnowflakes = JSON.parse(recentlyStreamed.messagePairs);
+
+		editMessages(client, channelSnowflakes, true, streamURL, vods, vodTimeStamps);
+		return;
+	} else if(recentlyStreamed){await recentlyStreamed.destroy();}
+
+	//New stream entry.
 	const customMessageEmbed = await embedHelper.createLiveStreamEmbed(streamEvent, streamerIcon, liveStream, vodLink);
 	const customEmbed = embedHelper.copy(customMessageEmbed);
 	customEmbed.setTitle(`${customMessageEmbed.data.author.name} | ${customMessageEmbed.data.title}`);
 	
 	let messagesSent = [];
 	let messageSent, content, embed, channel;
-	for( i = 0; i < channelsToNotify.length; i++ ) {
+	for(let i = 0; i < channelsToNotify.length; i++) {
 		channel = await client.channels.fetch(channelsToNotify[i]);
 		//If the channel exists, and the bot is in the channel and can send messages, then proceed.
 		if(channel && channel.permissionsFor(client.user).has(["ViewChannel","SendMessages","EmbedLinks"])) {
@@ -452,14 +477,19 @@ async function streamerWentLive(client, streamEvent, streamerIcon, channelsToNot
 			}
 		}
 	}
-	let vodExists = false;
-	if(customEmbed.data.fields[customEmbed.data.fields.length - 1].name == `Link to VOD`) {vodExists = true;}
+	let vts = "";
+	if(!vodLink){vodLink = "";}
+	else {vts = "Latest VOD";}
 	//Save channelId + Message Id objects to db for streamerWentOffline to use.
 	await client.dbs.streamtemp.create({
 		broadcasterId: streamEvent.broadcasterId,
 		streamId: streamEvent.id,
 		messagePairs: JSON.stringify(messagesSent),
-		vodExists: vodExists
+		isLive: true,
+		vods:vodLink,
+		vodTimeStamps:vts,
+		streamURL: streamURL,
+		streamStart: (new Date())
 	});
 }
 
@@ -467,23 +497,35 @@ async function streamerWentOffline(client, streamerId) {
 	//Attempt to get info from database. 
 	let streamThatEnded = await client.dbs.streamtemp.findOne({ where: { broadcasterId: streamerId }});
 	if(streamThatEnded) {
+		if(!streamThatEnded.isLive){return;}
 		let channelSnowflakes = JSON.parse(streamThatEnded.messagePairs);
 		let streamId = streamThatEnded.streamId;
-		let vodExists = streamThatEnded.vodExists;
-		streamThatEnded.destroy();
+		let timeElapsed = getTimeElapsed(streamThatEnded.streamStart);
+		let streamURL = streamThatEnded.streamURL;
+		let vods = streamThatEnded.vods.split(',') || [];
+		let vodTimeStamps = streamThatEnded.vodTimeStamps.split(',') || [];
 
-		let vodLink = await getVODLink(client, vodExists, streamId, streamerId);
-	
-		editMessages(client, vodLink, channelSnowflakes);
+		streamThatEnded.isLive = false;
+		let vodLink = await getVODLink(client, streamId, streamerId, vods, vodTimeStamps);
+		const latestVODStr = "Latest VOD";
 
-		if(!vodLink && !vodExists){
-			setTimeout(async () => {
-				let vl = await getVODLink(client, vodExists, streamId, streamerId);
-				if(vl) {
-					editMessages(client, vl, channelSnowflakes);
-				}	
-			},300000);
-		}		
+		if(vodLink){
+			if(!vods.length || !vods.includes(vodLink)) {vods.push(vodLink);}
+			if(vodTimeStamps.includes(latestVODStr)){vodTimeStamps.pop();}
+			if(vods.length != vodTimeStamps.length){vodTimeStamps.push(timeElapsed);}
+			streamThatEnded.vods = vods.join(',');
+			streamThatEnded.vodTimeStamps = vodTimeStamps.join(',');
+		}
+		await streamThatEnded.save();
+		await editMessages(client, channelSnowflakes, false, streamURL, vods, vodTimeStamps);
+
+		setTimeout(async ()=>{
+			streamThatEnded = await client.dbs.streamtemp.findOne({ where: { broadcasterId: streamerId }});
+			//TODO: Add a counter/check a counter before destroying record.
+			if(streamThatEnded && streamThatEnded.isLive == false){
+				streamThatEnded.destroy();
+			}
+		},240000);	
 	}
 }
 
@@ -493,49 +535,67 @@ async function getStream(client, streamerId) {
 	while(!liveStream && maxAttempts > 0) {
 		liveStream = await client.twitchAPI.streams.getStreamByUserId(streamerId);
 		if(!liveStream) {
-			await sleep(5000);
+			await sleep(2000);
 			maxAttempts--;
 		}
 	}
 	return liveStream;
 }
 
-async function getVODLink(client, vodExists, streamId, streamerId) {
-	if(vodExists) {return null;}
-	let vod = null, vodObject = null, vodLink = ``;
+async function getVODLink(client, streamId, streamerId, vods, vodTimeStamps) {
+	let vod = null, vodObject = null, vodLink = null;
 	let vodFilter = {period: `day`, type: `archive`, first: 1};
 	let maxAttempts = 3;
-
+	if(vodTimeStamps && vodTimeStamps[vodTimeStamps.length - 1] == "Latest VOD"){return vods[vods.length - 1];}
 	while(!vodLink && maxAttempts > 0) {
 		({data: vod} = await client.twitchAPI.videos.getVideosByUser(streamerId, vodFilter));
 		if(vod && vod.length > 0){vodObject = vod[0];}
 		if(vodObject && vodObject.streamId == streamId) {vodLink = vodObject.url;}
 		else {
 			maxAttempts--;
-			await sleep(2000);
 		}
 	}
+
 	return vodLink;
 }
 
-async function editMessages(client, vodLink, channelSnowflakes) {
-	let channel, message, newEmbed;
-		channelSnowflakes.forEach(async (obj) => {
-			try{
-				channel = await client.channels.fetch(obj.channelId);
-				if(channel && channel.permissionsFor(client.user).has(["ViewChannel","SendMessages","EmbedLinks"])) {
-					message = await channel.messages.fetch(obj.snowflake);
-					if(message && message.editable) {
-						newEmbed = embedHelper.copy(message.embeds[0]);
-						newEmbed.setURL(newEmbed.data.url + `/videos`);
-						newEmbed.data.fields[0] = {name: `Stream Status` , value: `❌ Ended ❌`, inline: false};
-						if(vodLink) {newEmbed.addFields({name: `Link to VOD`, value: `[Click here](${vodLink})`, inline: true})}
-						await message.edit({embeds: [newEmbed]});
-					}
+//Handle editing embeds sent out, called when going offline, and when restarting the stream.
+async function editMessages(client, channelSnowflakes, wentLive, streamURL, vods, vodMsgs) {
+	let channel, message, newEmbed, streamStatus, vodObj = null, value, vodFieldName;
+	streamURL = "https://" + streamURL;
+	vodFieldName = `Link to VOD`;
+	if(vods.length > 1){vodFieldName = `Link to VODs`;}
+	if(wentLive) {value = `✅ Live ✅`}
+	else {
+		value = `❌ Ended ❌`;
+		streamURL += "/videos";
+	}
+	
+	streamStatus = {name: `Stream Status` , value: value, inline: false}
+	let vodStr; 
+	if(vods && (vods.length > 0)){vodStr = getVODString(vods,vodMsgs)}
+	if (vodStr){vodObj = [{name: vodFieldName, value: vodStr, inline: true}];}
+
+	channelSnowflakes.forEach(async (obj) => {
+		try{
+			channel = await client.channels.fetch(obj.channelId);
+			if(channel && channel.permissionsFor(client.user).has(["ViewChannel","SendMessages","EmbedLinks"])) {
+				message = await channel.messages.fetch(obj.snowflake);
+				if(message && message.editable) {
+					newEmbed = embedHelper.copy(message.embeds[0]);
+					newEmbed.setURL(streamURL);
+					newEmbed.data.fields[0] = streamStatus;
+					if(vodObj) {
+						if(newEmbed.data.fields && (newEmbed.data.fields[newEmbed.data.fields.length - 1].name).match(/Link to VODs?/)){
+							newEmbed.spliceFields(-1,1);
+						}
+						newEmbed.addFields(vodObj);
+					}	
+					await message.edit({embeds: [newEmbed]});
 				}
-			} catch (error) {console.log(error);}
-			
-		});
+			}
+		} catch (error) {console.log(error);}
+	});
 }
 
 //Used to wait for a specified amount of time, as twitch caches need time to update 
@@ -546,4 +606,28 @@ async function sleep(milliseconds) {
 	while(currentTime < stopTime){
 		currentTime = Date.now();
 	}
+}
+
+function getTimeElapsed(start) {
+	const startDate = (new Date(start)).getTime();
+	const endDate = (new Date()).getTime();
+	let timeElapsed = Math.trunc((endDate - startDate) / 1000);
+	const seconds = timeElapsed % 60;
+	timeElapsed = Math.trunc(timeElapsed / 60);
+	const minutes = timeElapsed % 60;
+	const hours = Math.trunc(timeElapsed / 60);
+	let timeStr = "";
+	if(hours){timeStr += hours.toString() + "h";}
+	if(minutes){timeStr += minutes.toString() + "m";}
+	if(seconds){timeStr += seconds.toString() + "s";}
+	return timeStr;
+}
+
+function getVODString(vods, vodLengths) {
+	let str = "";
+	for(let i = 0; i < vods.length; i++) {
+		if(vods[i].length > 0){str += `[${vodLengths[i]}](${vods[i]})\n`;}
+	}
+
+	return str;
 }

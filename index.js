@@ -100,7 +100,11 @@ async function main() {
 		broadcasterId: Sequelize.STRING,
 		streamId: Sequelize.STRING,
 		messagePairs: Sequelize.STRING,
-		vodExists: Sequelize.BOOLEAN,
+		isLive: Sequelize.BOOLEAN,
+		vods: Sequelize.STRING,
+		vodTimeStamps: Sequelize.STRING,
+		streamURL: Sequelize.STRING,
+		streamStart: Sequelize.DATE
 	});
 
 	//Attach the database + tables to the discord client so the discord commands can access the related tables.
@@ -121,8 +125,8 @@ async function main() {
 	console.log(`Making facial expressions at Twitch . . .`);
 	//Setup the twitch client with auto-refreshing token.
 	const authProvider = new AppTokenAuthProvider(twitchClientId, twitchClientSecret);
-
-	const apiClient = new ApiClient({ authProvider, logger: {minLevel:'debug'} });
+	//minLevel: error or debug
+	const apiClient = new ApiClient({ authProvider, logger: {minLevel:'error'} });
 	client.twitchAPI = apiClient;
 
 

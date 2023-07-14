@@ -39,7 +39,7 @@ async function createLiveStreamEmbed(streamEvent, streamerIcon, liveStream, vodL
 			}
 		}
 		if(vodLink) {
-			lsEmbed.addFields({name: `Link to VOD`, value: `[Click here](${vodLink})`, inline: true});
+			lsEmbed.addFields({name: `Link to VOD`, value: `[Latest VOD](${vodLink})`, inline: true});
 		}
 	} catch(error) {
 		console.log(`~~createLiveStreamEmbed~~\n${error}`);
