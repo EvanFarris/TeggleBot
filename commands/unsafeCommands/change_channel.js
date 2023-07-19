@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, InteractionType, ChannelType} = require('discord.js');
-const embedHelper = require(`../helperFiles/embed_functions.js`);
-const dbHelper = require(`../helperFiles/database_functions.js`);
-const validationHelper = require(`../helperFiles/validation_functions.js`);
+const embedHelper = require(`../../helperFiles/embed_functions.js`);
+const dbHelper = require(`../../helperFiles/database_functions.js`);
+const validationHelper = require(`../../helperFiles/validation_functions.js`);
 const embeddedTitle = `TeggleBot Change Image Results`;
 module.exports = {
 	data: new SlashCommandBuilder()

@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const validationHelper = require(`../helperFiles/validation_functions.js`);
+const validationHelper = require(`../../helperFiles/validation_functions.js`);
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('tb_dev_get_vod')

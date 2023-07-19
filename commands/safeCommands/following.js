@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const embedHelper = require(`../helperFiles/embed_functions.js`);
+const embedHelper = require(`../../helperFiles/embed_functions.js`);
 /*
 	This module returns an embedded message of all the streamers that a guild is subscribed to, and which websites they stream on.
 */

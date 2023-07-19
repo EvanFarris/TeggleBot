@@ -1,9 +1,9 @@
 const { SlashCommandBuilder, InteractionType} = require('discord.js');
 
 const commandName = `unfollow`;
-const embedHelper = require('../helperFiles/embed_functions.js');
-const dbHelper = require(`../helperFiles/database_functions.js`);
-const validationHelper = require(`../helperFiles/validation_functions.js`);
+const embedHelper = require('../../helperFiles/embed_functions.js');
+const dbHelper = require(`../../helperFiles/database_functions.js`);
+const validationHelper = require(`../../helperFiles/validation_functions.js`);
 const embeddedTitle = `TeggleBot Unfollow Results`;
 module.exports = {
 	data: new SlashCommandBuilder()

@@ -23,6 +23,8 @@ module.exports = {
 				rows = await interaction.client.dbs.guildsubs.findAll();
 			} else if(table_name == "TEMP"){
 				rows = await interaction.client.dbs.temp.findAll();
+			} else if(table_name == "STREAM_TEMP") {
+				rows = await interaction.client.dbs.streamtemp.findAll();
 			} else {
 				return interaction.reply("Invalid table name entered.");
 			}
@@ -43,6 +45,8 @@ module.exports = {
 					}
 				} else if(table_name == "TEMP") {
 					result = `${rows.length} entries in TEMP table.`;
+				} else if(table_name =="STREAM_TEMP") {
+					result = `${rows.length} streamers have recently streamed.`; 
 				}
 				if(result != ""){
 					return interaction.reply(`${result}`);

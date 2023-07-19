@@ -18,23 +18,23 @@ async function main() {
 	const client = new Client({ intents: [GatewayIntentBits.Guilds]});
 	client.commands = new Collection();
 	console.log(`Rolling out events and commands . . .`);
-	const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-	const devFiles = fs.readdirSync(`./devCommands`).filter(file => file.endsWith(`.js`));
-	const safeFiles = fs.readdirSync(`./safeCommands`).filter(file => file.endsWith(`.js`));
+	const commandFiles = fs.readdirSync('./commands/unsafeCommands').filter(file => file.endsWith('.js'));
+	const devFiles = fs.readdirSync(`./commands/devCommands`).filter(file => file.endsWith(`.js`));
+	const safeFiles = fs.readdirSync(`./commands/safeCommands`).filter(file => file.endsWith(`.js`));
 	client.safeCommands = new Set();
 
 	//Load commands into the client
 	for(const file of commandFiles) {
-		const command = require(`./commands/${file}`);
+		const command = require(`./commands/unsafeCommands/${file}`);
 		client.commands.set(command.data.name, command);
 	}
 	for(const file of devFiles) {
-		const command = require(`./devCommands/${file}`);
+		const command = require(`./commands/devCommands/${file}`);
 		client.commands.set(command.data.name, command);
 		client.safeCommands.add(command.data.name);
 	}
 	for(const file of safeFiles) {
-		const command = require(`./safeCommands/${file}`);
+		const command = require(`./commands/safeCommands/${file}`);
 		client.commands.set(command.data.name, command);
 		client.safeCommands.add(command.data.name);
 	}
@@ -59,7 +59,7 @@ async function main() {
 		storage: dbStorage,
 	});
 
-	//create the three tables needed.
+	//create the four tables needed.
 	const GUILD_SUBS = sequelize.define('guild_subs', {
 		guildId: {
 			type: Sequelize.STRING,
@@ -84,7 +84,7 @@ async function main() {
 		streamerIcon: Sequelize.STRING,
 		streamerIconLastCheckedAt: Sequelize.STRING,
 		lastOnline: Sequelize.STRING, //For timed unsubscription purposes
-		followersInfo: Sequelize.TEXT,	//JSON guild channelids to send out livestream notifications.
+		followersInfo: Sequelize.TEXT,	//JSON guild channelIds to send out livestream notifications.
 	});
 
 	const SUB_TEMP = sequelize.define(`sub_temp`, {
@@ -96,15 +96,14 @@ async function main() {
 		customMessage: Sequelize.STRING,
 	});
 
-	const STREAM_TEMP = sequelize.define(`stream_temp`, {
+	const STREAM_INFO = sequelize.define(`stream_info`, {
 		broadcasterId: Sequelize.STRING,
-		streamId: Sequelize.STRING,
+		streamURL: Sequelize.STRING,
 		messagePairs: Sequelize.STRING,
 		isLive: Sequelize.BOOLEAN,
-		vods: Sequelize.STRING,
-		vodTimeStamps: Sequelize.STRING,
-		streamURL: Sequelize.STRING,
-		streamStart: Sequelize.DATE
+		streamIds: Sequelize.STRING,
+		vodLinks: Sequelize.STRING,
+		durations: Sequelize.STRING,
 	});
 
 	//Attach the database + tables to the discord client so the discord commands can access the related tables.
@@ -112,7 +111,8 @@ async function main() {
 	client.dbs.guildsubs = GUILD_SUBS;
 	client.dbs.twitchstreamers = TWITCH_STREAMERS;
 	client.dbs.temp = SUB_TEMP;
-	client.dbs.streamtemp = STREAM_TEMP;
+	client.dbs.streamtemp = STREAM_INFO;
+
 	client.dbs.guildsubs.sync({force: force});
 	client.dbs.twitchstreamers.sync({force: force});
 	client.dbs.temp.sync({force: true});
@@ -128,7 +128,6 @@ async function main() {
 	//minLevel: error or debug
 	const apiClient = new ApiClient({ authProvider, logger: {minLevel:'error'} });
 	client.twitchAPI = apiClient;
-
 
 	const RPAdapter = new ReverseProxyAdapter({
 		hostName: hName,
