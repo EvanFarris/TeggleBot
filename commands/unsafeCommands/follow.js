@@ -1,9 +1,9 @@
 const { SlashCommandBuilder, InteractionType, ChannelType} = require('discord.js');
 
 const embeddedTitle = `Follow Results`;
-const embedHelper = require('../helperFiles/embed_functions.js');
-const dbHelper = require(`../helperFiles/database_functions.js`);
-const validationHelper = require(`../helperFiles/validation_functions.js`);
+const embedHelper = require('../../helperFiles/embed_functions.js');
+const dbHelper = require(`../../helperFiles/database_functions.js`);
+const validationHelper = require(`../../helperFiles/validation_functions.js`);
 
 module.exports = {
 	data: new SlashCommandBuilder()

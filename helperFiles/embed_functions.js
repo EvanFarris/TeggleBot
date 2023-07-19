@@ -21,7 +21,7 @@ function createEmbed(title, description) {
 }
 
 //Creates the embed for live stream notifications. 
-async function createLiveStreamEmbed(streamEvent, streamerIcon, liveStream, vodLink) {
+async function createLiveStreamEmbed(streamEvent, streamerIcon, liveStream, vod) {
 	const lsEmbed = new EmbedBuilder()
 		.setColor(`#474354`)
 		.setTitle(`${streamEvent.broadcasterDisplayName}'s stream`)
@@ -38,8 +38,8 @@ async function createLiveStreamEmbed(streamEvent, streamerIcon, liveStream, vodL
 				lsEmbed.addFields({name: `Game`, value: liveStream.gameName, inline: true});
 			}
 		}
-		if(vodLink) {
-			lsEmbed.addFields({name: `Link to VOD`, value: `[Latest VOD](${vodLink})`, inline: true});
+		if(vod) {
+			lsEmbed.addFields({name: `Link to VOD`, value: `[Latest VOD](${vod.url})`, inline: true});
 		}
 	} catch(error) {
 		console.log(`~~createLiveStreamEmbed~~\n${error}`);

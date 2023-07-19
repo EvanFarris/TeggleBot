@@ -1,19 +1,19 @@
 const { SlashCommandBuilder, InteractionType} = require('discord.js');
-const embedHelper = require(`../helperFiles/embed_functions.js`);
-const dbHelper = require(`../helperFiles/database_functions.js`);
-const validationHelper = require(`../helperFiles/validation_functions.js`);
-const embeddedTitle = `TeggleBot Change Image Results`;
+const embedHelper = require(`../../helperFiles/embed_functions.js`);
+const dbHelper = require(`../../helperFiles/database_functions.js`);
+const validationHelper = require(`../../helperFiles/validation_functions.js`);
+const embeddedTitle = `TeggleBot Change Message Results`;
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('change_image')
-		.setDescription(`Change the image that gets sent with a streamer went live notification`)
+		.setName('change_message')
+		.setDescription(`Change the custom message that gets sent with a notification`)
 		.addStringOption(option =>
-			option.setName('image')
+			option.setName('message')
 			.setMaxLength(256)
-			.setDescription('The direct link you want to send with the streamer notification.')),
+			.setDescription('The new message you want to send with the streamer notification.')),
 	async execute(interaction) {
 		if(interaction.type === InteractionType.ApplicationCommand) {
-			const customImage = interaction.options.getString(`image`) || null;
+			const customMessage = interaction.options.getString(`message`) || "";
 			const firstResponseMessage = `Choose the streamer to update.`;
 			const gs_tableEntry = await dbHelper.getGuildSubsTableEntry(interaction.client, interaction.guildId);
 			if(!gs_tableEntry){
@@ -21,14 +21,14 @@ module.exports = {
 				let description = "You are not subscribed to anyone.";
 				return interaction.reply({ embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 			};
-			const selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `change_image`);
+			const selectMenu = embedHelper.getSelectMenu(gs_tableEntry, `change_message`);
 			
-			interaction.client.mapChangesToBe.set(interaction.guildId, customImage);
+			interaction.client.mapChangesToBe.set(interaction.guildId, customMessage);
 			let messageSent = await interaction.reply({content: firstResponseMessage, ephemeral: true, components: [selectMenu]});
-			embedHelper.startCollector(interaction, `change_image`, messageSent);
+			embedHelper.startCollector(interaction, `change_message`, messageSent);
 		} else if (interaction.isStringSelectMenu()){
 			const selectedValue = interaction.values[0];
-			const customImage = interaction.client.mapChangesToBe.get(interaction.guildId);
+			const customMessage = interaction.client.mapChangesToBe.get(interaction.guildId);
 			interaction.client.mapChangesToBe.delete(interaction.guildId);
 			if(selectedValue == `none`) {return interaction.update({components: []});}
 
@@ -37,13 +37,13 @@ module.exports = {
 			const {streamerAsJSON, gs_tableEntry} = await getFromDbs(interaction, streamerUsername, website);
 			let result = null;
 			if(streamerAsJSON) {
-				result = await dbHelper.updateProperty(interaction.client, gs_tableEntry, streamerAsJSON, interaction.guildId, channelId, streamerId, `image`, customImage);
+				result = await dbHelper.updateProperty(interaction.client, gs_tableEntry, streamerAsJSON, interaction.guildId, channelId, streamerId, `message`, customMessage);
 			}
 			let description;
 			if(result) {
-				description = `Image changed successfully.`;
+				description = `Message changed successfully.`;
 			} else {
-				description = `Image did not change successfully.`;
+				description = `Message did not change successfully.`;
 			}
 			interaction.reply({embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
 		}
