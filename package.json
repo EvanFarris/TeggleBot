@@ -1,6 +1,6 @@
 {
   "name": "tegglebot",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "main": "index.js",
   "scripts": {
     "start": "node deploy-commands.js && node index.js"
@@ -13,13 +13,13 @@
   "license": "ISC",
   "keywords": [],
   "dependencies": {
-    "@twurple/api": "^6.0.8",
-    "@twurple/auth": "^6.0.8",
-    "@twurple/eventsub-http": "^6.0.8",
-    "discord-api-types": "^0.37.35",
-    "discord.js": "^14.8.0",
-    "dotenv": "^16.0.3",
-    "sequelize": "^6.29.3",
+    "@twurple/api": "^7.0.1",
+    "@twurple/auth": "^7.0.1",
+    "@twurple/eventsub-http": "^7.0.1",
+    "discord-api-types": "^0.37.55",
+    "discord.js": "^14.13.0",
+    "dotenv": "^16.3.1",
+    "sequelize": "^6.32.1",
     "sqlite3": "^5.1.6"
   },
   "description": ""

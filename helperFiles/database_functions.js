@@ -127,11 +127,14 @@ async function loadPreviousSubscriptions(client) {
 		obj = rows.at(i);
 		sName = obj.get("streamerUsername");
 		sId = obj.get("streamerId");
+
+		await twitchEventSubSubscribe(client, sId);
+		/*
 		if(obj.get("lastOnline") > cutoffTime) {
-			await twitchEventSubSubscribe(client, sId);
+			
 		} else { 
 			//TODO: Remove all followers from guild_subs, then remove the streamer from twitch_subs
-		}
+		}*/
 	}
 }
 
