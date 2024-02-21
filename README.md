@@ -1,16 +1,19 @@
 # TeggleBot
 ## Purpose
 Create a Discord Bot that notifies text channels when a Twitch.tv streamer goes live.
-## Perks over competitors
+## Features
 - Setup is completely in Discord, no web interface. 
-- Every field can be changed (Change which channel gets notified, message that gets sent with the embed, image that is sent in the embed)
+- Every field can be changed 
+	- The channel that gets notified.
+	- The message that gets sent with the embed.
+	- The image that is sent in the embed.
 - Stream Status is shown and updated when streamer goes online or offline
-- Link to the VOD is added, if VODs are enabled.
-- Free, built only for notifying streams.
+- Link to the VOD is added, if the streamer enables VODs.
+- Completely free.
 ## Try out the bot
-If you don't want to host your own bot, or want to try mine out, invite my bot below, read command information.
+If you don't want to host your own bot, invite my bot below. Read the Command Information section for command details.
 ### Invitation link
-[Click this invitation link](https://discord.com/oauth2/authorize?client_id=963284271655702568&scope=bot&permissions=134144)
+[Invite the bot](https://discord.com/oauth2/authorize?client_id=963284271655702568&scope=bot&permissions=134144)
 ### Quick-start 
 After inviting the bot to the server, use /follow to get notifications. [Example Command](https://i.imgur.com/HB67Xlw.png)
 
@@ -20,29 +23,35 @@ Fields
 - message: The message to be sent with the notification, you can mention roles, @everyone, etc. 
 - image: A url that directly links to an image to show with the notification. 
 
-The Bot will reply with [a message that looks like this](https://i.imgur.com/90UZvwe.png), you will have 15 seconds to confirm that this is the correct streamer (click the blue header to open the channel), before it expires, and you will have to re-enter the command.
+The Bot will reply with [a message like this](https://i.imgur.com/90UZvwe.png). You will have 15 seconds to confirm that this is the correct streamer. If it expires, you will have to re-enter the command.
 
-After pressing the follow button, the bot will send [this message](https://i.imgur.com/mStE35v.png)
+After confirming, the bot will send [this message](https://i.imgur.com/mStE35v.png).
 
 And you should be all set, five Twitch streamers can be followed per server. [Example notification](https://i.imgur.com/SqKKciE.png)
 
 __Note: The bot must be in the channel and be able to send messages, otherwise no message will be sent.__
-### Other commands
-- /unfollow			#Reverse of /follow, stops notifications from happening
-- /following			#Show every channel you follow
-- /change_channel		#Change the channel that a specific streamer's notifications are sent to
-- /change_image			#Change the image that gets shown with the notification
-- /change_message		#Change the message that gets sent with the notification
-- /stats			#Shows stats about the bot
-- /check_id			#Shows Guild id and channel id
+## Command Information
+### General Commands
+These commands are sent to every guild. The first six commands can only be sent by those who have at least one of the following permissions: Administrator, ManageGuild, ManageWebhooks
+- /follow 				# Follow a Twitch streamer, send notifications to a text channel whenever stream goes live.
+- /unfollow				# Reverse of /follow, stops notifications from happening
+- /following			# Show every channel you follow
+- /change_channel		# Change the channel that a specific streamer's notifications are sent to
+- /change_image			# Change the image that gets shown with the notification
+- /change_message		# Change the message that gets sent with the notification
+- /stats				# Shows stats about the bot
+- /check_id				# Shows Guild id and channel id
+
+### Dev Commands
+Commands that are only to be used for debugging purposes. These are only sent to guilds specified in your .env file, and should only be ran on a test server.
+- /tb_dev_stats			# Information on Db/hashmaps
+- /tb_dev_deleteallsubs	# If sent True: Resets the entire DB and hashmaps. If False: Reloads subscriptions.
+- /tb_dev_checktable	# Get detailed information on a table in the database
+- /tb_dev_get_vod		# Sends a list of vods to the console, to see if vods were made
 
 ## Why this bot was made
-The short answer is that the community server for my favorite streamer was using the massively popular Mee6 bot, and livestream notifications would take anywhere from 2-40 minutes to be sent([Mee6](https://i.imgur.com/Af4dVaE.png) vs [TeggleBot](https://i.imgur.com/B4bsUpQ.png), so I wanted to see if I could do better. 
+My favorite streamer's Discord was using the massively popular Mee6 bot. It was great early on, but as time went on, livestream notifications would take be taking longer and longer to appear. There was no rhyme or reason to how long it would take Mee6 to notify the guild, so I wanted to see if I could do better with my own bot. This is illustrated in in this following example- the Mee6 bot responded 31 minutes after my bot. ([Mee6](https://i.imgur.com/Af4dVaE.png) vs [TeggleBot](https://i.imgur.com/B4bsUpQ.png)
 
-The long answer, in addition to the previous statement, is that Discord notifications in my opinion is superior than Twitch notifications. 
-```
-I believe there is a different connotation with a notification coming from Discord and one coming from Twitch. Just like how the content difference between an email and a text exists, despite both being instant, text-based, messaging systems. Since Discord is a social platform, notifications are usually welcomed, as they either involve you, or are relevant to your interests. Twitch's system of follow notifications is all or nothing. So you can't limit the number of notifications you get, without unfollowing the streamers.
-```
 Why didn't I just search for another person's bot to use? 
 - I wanted to learn how to make a Discord bot.
 - I felt that other implementations of stream notifications were barebones.
@@ -54,22 +63,24 @@ This project is run on Ubuntu 22.04, with Node.js.
 There are six major components needed for this program to work
 1. Buy (or use) a domain and create an A record pointed to the IP of the machine that hosts the program.
 2. A SSL certificate, a free one can be generated by [Let's Encypt](https://letsencrypt.org)
-3. Configure the host machine to use a reverse proxy (ex. Nginx), an explanation is further down the file.
+3. Configure the host machine to use a reverse proxy (ex. Nginx), an explanation is further down the file. __NOTE__: Also make Nginx restart upon certificate renewal by creating a cli.ini file, and adding the one line of code in this article[Arnon on Technology](https://blog.arnonerba.com/2019/01/lets-encrypt-how-to-automatically-restart-nginx-with-certbot) 
 4. Must create a Discord account and [create a new application](https://discord.com/developers/applications)
 5. Must create a Twitch.tv account and [create an application](https://dev.twitch.tv/console/apps)
-5. A .env file
+6. A .env file
 
-A domain is needed in cases where APIs require a redirect url to return the data requested from an API call. An individual IP address is normally not sufficient. Purchase one from a domain broker such as GoDaddy, Namecheap, Google Domains, etc.
+Twitch's API requires a redirect url to return the data requested from an API call. An individual IP address is not sufficient, so you need to purchase a domain to point to. Purchase one from a domain broker such as GoDaddy, Namecheap, Google Domains, etc.
 
-The SSL certificate is necessary, Twitch's API requires a redirect url to be ssl certified to return data. __It can not be a self-signed ssl certificate__, but you can get one for free from Let's Encrypt (link above). 
+Twitch also requires the redirect url to use HTTPS, which means we need a SSL certificate. __It can not be a self-signed ssl certificate__, I've tried, but it doesn't work. You can get one for free from Let's Encrypt (link above), or buy one from a trusted source. 
 
-The reverse proxy in this use case connects the request to the application, redirecting the request to the port number the program is listening to on localhost.
+The reverse proxy in this use case connects the request to the application, redirecting the request to the port number the program is listening for.
 
-Since we need to use Discord's API to add the playlist to a user's account, we need to register an account and create an application. This allows us to interact with the API, through the use of the application id and secret.
+Since we need to use Discord's API to add the playlist to a user's account, we need to register an account and create an application. This allows us to interact with the API.
 
-We also need an account for Twitch as well,
+The same reasoning applies for Twitch as well.
 
 To avoid uploading sensitive information like the application id/secret, we store the data in a .env file, and it is not uploaded to git. In this project, it is structured like the code below; however, without the comments.
+
+Sample .env file:
 ```
 DISCORD_BOT_TOKEN=			#index.js | deploy_commands.js |Token generated when you add a bot to your Discord application (Bot tab)
 DISCORD_CLIENT_ID=			#deploy_commands.js | Application ID of your bot (General Information tab) 
@@ -77,7 +88,7 @@ DISCORD_TEST_SERVER_ID=		#deploy_commands.js | Guild (Programmatic name for a di
 DISCORD_TEST_SERVER_ID2=	#deploy_commands.js | Same as above, but for a second test server
 TWITCH_CLIENT_ID=			#index.js | Client ID from Twitch
 TWITCH_CLIENT_SECRET=		#index.js | Client Secret from Twitch
-TWITCH_ACCESS_TOKEN=		#index.js | String that you randomly generate
+TWITCH_ACCESS_TOKEN=		#index.js | String that you literally randomly generate
 HOST_NAME=					#index.js | Your domain name, in the example "https://teggle.dev/spotify", "HOST_NAME=teggle.dev" 
 ADAPTER_PORT=				#index.js | Port you want to watch for notifications, same port as you put in nginx
 PATH_PREFIX=				#index.js | The location you set when setting up nginx.  "PATH_PREFIX=/spotify" in the example at the bottom of the file
@@ -88,8 +99,12 @@ DB_HOST=
 DB_DIALECT=
 DB_STORAGE=
 ```
+DISCORD prefixed variables are from Discord, whether from creating an application, or from a guild specifically.
+TWITCH prefixed variables are the same, but from Twitch
 
-## Usage
+The comments show which files use this information, and a little bit of information about it.
+
+## Hosting the bot
 ### Inviting the bot to a Guild
 If you are using the bot with test guilds, invite the bot with https://discord.com/oauth2/authorize?client_id=CLIENT_ID_HERE&scope=bot&permissions=134144 
 Where __CLIENT_ID_HERE__ is the same as the DISCORD_CLIENT_ID in your .env file. The only permissions this bot currently needs is View Channels, Send Messages, and Mention @everyone, @here, etc.
@@ -139,12 +154,26 @@ All interactions with the bot are initially started with a slash command, the bo
 There are three folders with commands
 - devCommands: This folder has commands that only work in the test guilds you set in .env, as they shouldn't be available to the public.
 - safeCommands: The commands in here are the few commands that don't modify anything in the database, so they can be called by anybody, at any time.
-- commands: Commands that alter entries in the database. These are callable only by people with at least one of these three permissions: Administrator, ManageGuild, or ManageWebhooks. In addition, only one command from this folder can be processed at a time, in order to prevent race conditions.
+- unsafeCommands: Commands that alter entries in the database. These are callable only by people with at least one of these three permissions: Administrator, ManageGuild, or ManageWebhooks. In addition, only one command from this folder can be processed at a time, in order to prevent race conditions.
 
-## Pitfalls and addressing those pitfalls
-The Twitch.tv API is harder to work than Discord. The major reason is because it required a webserver to send API replies, as opposed to (presumably) websockets with Discord. In addition, Discord.js has a wonderful guide, on top of great documentation, opposed to the twitch library. However, it's not a major gripe, as both libraries are open-source and community made, and their work eliminates a ton of work that is otherwise needed.
+## Challenges
+### Overall Challenges
+Learning all the necessary pieces to make and host this bot was challenging. Buying a domain and VPS was one thing, but setting up Nginx and getting the correct SSL certificate was a lot less intuitive. It's very easy to find information on it after the fact, but the initial foray of queries were filled with articles that were either irrelevant or outdated. 
 
-It was impossible to consistently get the correct stream thumbnail. According to most posts on Twitch's dev forum, the problem is a caching problem. The eventsub notification is sent a lot faster than twitch's cdn caches updates. So a lot of the time, a default image is sent. I don't think this is the full story, however. Sometimes the image would be correctly displayed for a streamer for a few days, then upon a restart with no change, it wouldn't work. Also, I noticed that sometimes, between four different platforms(Windows 10, Windows 11, Android, and the web client), the image would work on some platforms but not on other platforms. I asked this question on the Discord.js server, and the response was that it was just something only Discord could solve. So with the caching problem from Twitch, and the display error from Discord, I opted to remove the stream thumbnail for the time being, replacing it with a user supplied image, if the image is hosted on some other website. 
+The Twurple.js library was also harder to work with, as the examples in the docs were for other classes/objects in the library. As opposed to the Discord.js library, where guides spoonfeed every major class. Nonetheless I got both working through the documentation and their respective Discords, where both maintainers and community are there to help people.
+
+### Specific Challenges
+#### Stream Thumbnail
+It was impossible to consistently get the correct stream thumbnail. According to most posts on Twitch's dev forum, the problem is a caching problem- that the eventsub notification takes a lot less time to send, than the time it takes for their CDN Cache to update. So a lot of the time, a default image is sent to Discord. 
+
+I don't think this is the full story, however, as sometimes the image would be correctly displayed for a streamer for a few days, then upon a restart with no code changes, it wouldn't work. Also, I noticed that when I had Discord open on four different platforms at the same time, the correct thumbnail would be sent on some platforms but not on other platforms. I asked about this question on the Discord.js server, and the response was that it was just something only Discord could solve. 
+
+So with the caching problem from Twitch, and the display error from Discord, I opted to remove the stream thumbnail for the time being, replacing it with a user supplied image, if the image is hosted on some other website. 
+
+#### Bot eventually stops receiving Twitch notifications
+Ever since I've been able to run the bot continuously, there's been a problem where it would stop receiving events from Twitch after weeks of uptime. No matter what I changed in the code, it would always break after a month or two.
+
+I've since learned that it's mainly caused by the SSL certificate expiring. Additionially, I've just stumbled upon the fact that most servers don't automatically update the certificate that they use, until you restart it. So to deal with this, I set the reverse proxy to automatically restart Nginx after it refreshes the certificate. Hopefully that solves the problem, but I've discovered that Twurple also uses an AppAccessToken which may or may not refresh itself.
 
 ## Learned
 1. Explore how Discord bots work
@@ -160,7 +189,7 @@ It was impossible to consistently get the correct stream thumbnail. According to
 1. Log all actions
 2. Update Notifications when stream title/game updates
 3. Support more streaming platforms
-4. Revisit stream thumbnails not being consistent
+4. Track Manga chapter releases.
 
 ## Nginx setup
 1. Install nginx
