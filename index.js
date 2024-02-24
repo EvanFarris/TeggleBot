@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const fs = require('node:fs');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const { DISCORD_BOT_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString, SEQUELIZE_USER: sq_user, SEQUELIZE_PASS: sq_pass, HOST_NAME: hName , ADAPTER_PORT: adapterPort, PATH_PREFIX: pathPrefix, DB_NAME: dbName, DB_HOST: dbHost, DB_DIALECT: dbDialect, DB_STORAGE: dbStorage} = process.env;
+const { DISCORD_BOT_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString, SEQUELIZE_USER: sq_user, SEQUELIZE_PASS: sq_pass, HOST_NAME: hName , ADAPTER_PORT: adapterPort, PATH_PREFIX: pathPrefix, DB_NAME: dbName, DB_HOST: dbHost, DB_DIALECT: dbDialect, DB_STORAGE: dbStorage, DISCORD_OWNER_ID: ownerId} = process.env;
 
 const Sequelize = require('sequelize');
 
@@ -13,6 +13,8 @@ const { DirectConnectionAdapter, EventSubHttpListener, ReverseProxyAdapter } = r
 const force = process.env.npm_config_force || false;
 const dbHelper = require(`./helperFiles/database_functions.js`);
 
+const scheduler = require('node-schedule');
+
 async function main() {
 	//Load commands into the client
 	const client = new Client({ intents: [GatewayIntentBits.Guilds]});
@@ -22,6 +24,7 @@ async function main() {
 	const devFiles = fs.readdirSync(`./commands/devCommands`).filter(file => file.endsWith(`.js`));
 	const safeFiles = fs.readdirSync(`./commands/safeCommands`).filter(file => file.endsWith(`.js`));
 	client.safeCommands = new Set();
+	client.ownerId = ownerId;
 
 	//Load commands into the client
 	for(const file of commandFiles) {
@@ -122,7 +125,7 @@ async function main() {
 	client.mapChangesToBe = new Map();
 	client.guildSet = new Set();
 
-	console.log(`Making facial expressions at Twitch . . .`);
+	console.log(`Starting Twitch Listeners . . .`);
 	//Setup the twitch client with auto-refreshing token.
 	const authProvider = new AppTokenAuthProvider(twitchClientId, twitchClientSecret);
 	//minLevel: error or debug
