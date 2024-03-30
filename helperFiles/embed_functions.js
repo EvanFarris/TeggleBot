@@ -8,7 +8,10 @@ module.exports = {
 	createEmbedWithButtons,
 	createFollowingEmbed,
 	startCollector,
-	copy
+	copy,
+	createFollowingMangaEmbed,
+	createNewMangaEmbed,
+	createMangaSeriesInfo,
 }
 
 //Basic embed
@@ -49,24 +52,37 @@ async function createLiveStreamEmbed(streamEvent, streamerIcon, liveStream, vod)
 }
 
 //Creates a select menu with a customId for interactionCreate to handle and route to the right command.
-function getSelectMenu(gs_tableEntry, customId) {
-	let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
-	let names = jsonParsed.streamerUserNames;
-	let websites = jsonParsed.streamerWebsites;
-	let channels = jsonParsed.channelIds;
-	let streamerIds = jsonParsed.streamerIds;
-
+function getSelectMenu(gs_tableEntry, customId, gType = "streamer") {
 	let selectMenuOptions = new StringSelectMenuBuilder()
-		.setCustomId(customId)
-		.setPlaceholder(`Nothing Selected`);
-	selectMenuOptions.addOptions({label: `No one`, value: `none`});
-	for(i = 0; i < names.length; i++) {
-		selectMenuOptions.addOptions(
-		{
-			label: `${names[i]}`,
-			value: `${streamerIds[i]}|${channels[i]}|${names[i]}|${websites[i]}`
-		});
+			.setCustomId(customId)
+			.setPlaceholder(`Nothing Selected`);
+	selectMenuOptions.addOptions({label: `Do Nothing`, value: `-1`});
 
+	if(gType == "streamer") {
+		let jsonParsed = JSON.parse(gs_tableEntry.get(`streamersInfo`));
+		let names = jsonParsed.streamerUserNames;
+		let websites = jsonParsed.streamerWebsites;
+		let channels = jsonParsed.channelIds;
+		let streamerIds = jsonParsed.streamerIds;
+
+		for(i = 0; i < names.length; i++) {
+			selectMenuOptions.addOptions(
+			{
+				label: `${names[i]}`,
+				value: `${streamerIds[i]}|${channels[i]}|${names[i]}|${websites[i]}|${gType}`
+			});
+		}
+	} else if(gType == "manga") {
+		let mangaList = JSON.parse(gs_tableEntry.get(`mangaInfo`));
+		for(let i = 0; i < mangaList.length; i++) {
+			selectMenuOptions.addOptions(
+			{
+				label: mangaList[i].title,
+				value: `${i.toString()}|${gType}`
+			});
+		}
+	} else {
+		return null;
 	}
 	return (new ActionRowBuilder().addComponents(selectMenuOptions));
 }
@@ -82,19 +98,22 @@ function decomposeSelected(selectedValue) {
 }
 
 //Embed with buttons to be sent when following a streamer, to confirm they want to follow this particular streamer
-function createEmbedWithButtons(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon) {
+function createEmbedWithButtons(interaction, info, callingFn, noBtn) {
 	const actionRow = new ActionRowBuilder()
 		.addComponents(
 				new ButtonBuilder()
-					.setCustomId('follow')
+					.setCustomId(callingFn)
 					.setLabel(`Yes (Follow)`)
 					.setStyle(ButtonStyle.Primary),
 				new ButtonBuilder()
-					.setCustomId(`button_no`)
+					.setCustomId(noBtn)
 					.setLabel(`No`)
 					.setStyle(ButtonStyle.Secondary),
 		);
-	let embedToSend = createCheckStreamerEmbed(streamerUsername, streamerDisplayName, streamerDescription, streamerIcon);
+	let embedToSend = null;
+	if(callingFn == "follow") {embedToSend = createCheckStreamerEmbed(info);}
+	else if (callingFn == "follow_manga"){embedToSend = createCheckMangaEmbed(info);}
+
 	return { actionRow, embedToSend };
 }
 
@@ -125,38 +144,73 @@ function createFollowingEmbed(twitchStreamerNames, twitchStreamerCustomMessages,
 }
 
 //Used in /following when asking if the streamer found is the one they want to subscribe to.
-function createCheckStreamerEmbed(streamerUsername, streamerDisplayName, streamerDescription, streamerIcon) {
+function createCheckStreamerEmbed(info) {
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#474354`)
-		.setTitle(`Retrieved ${streamerDisplayName}`)
+		.setTitle(`Retrieved ${info.displayname}`)
 		.setDescription(`Is this the correct streamer?`);
 
-	if(streamerDescription == "" || streamerDescription == "null") {streamerDescription = null;}
-	embeddedMessage.setTitle(`Is this the correct streamer? (${streamerDisplayName})`)
-		.setImage(streamerIcon)
-		.setURL(`https://twitch.tv/${streamerUsername}`);
-	if(streamerDescription){
-		embeddedMessage.setDescription(streamerDescription);
+	if(info.description == "" || info.description == "null") {info.description = null;}
+	embeddedMessage.setTitle(`Is this the correct streamer? (${info.displayname})`)
+		.setImage(info.icon)
+		.setURL(`https://twitch.tv/${info.username}`);
+	if(info.description){
+		embeddedMessage.setDescription(info.description);
 	}
 
 	return embeddedMessage;
 }
 
+function createCheckMangaEmbed(info) {
+	const embed = new EmbedBuilder()
+		.setColor(`#474354`)
+		.setTitle(`Is this the right series?`)
+		.setDescription(`Series title`);
+	
+	if(info.title){embed.setDescription(info.title);}
+	if(info.image){embed.setImage(info.image);}
+	if(info.domain){embed.setURL(info.url);}
+
+	return embed;
+}
+
 //Component collector for string select menus (unfollow.js, change_message.js)
-async function startCollector(interaction, customId, messageSent){
-	const filter = i => i.customId == `${customId}`;
-	const collector = messageSent.createMessageComponentCollector({ filter, componentType: ComponentType.StringSelect, time: 15000 });
+async function startCollector(interaction, customId, messageSent, cType, dbHelper, actionRow, embedToSend, streamerUsername){
+	const filter = i => i.customId == `${customId}` || i.customId.substring(0,9) == "button_no";
+	const collector = messageSent.createMessageComponentCollector({ filter, componentType: cType, time: 15000 });
 				
 	try {
 		collector.on(`collect`, collected => {
 			interaction.client.guildSet.delete(interaction.guildId);
-			interaction.editReply({components: []});
+			if(cType == ComponentType.StringSelect){
+				interaction.editReply({components: []});
+			} else if(cType == ComponentType.Button) {
+				actionRow.components[0].setDisabled(true);
+				actionRow.components[1].setDisabled(true);
+				interaction.editReply({ephemeral: true, embeds: [embedToSend], components: [actionRow]});
+
+				//Clean up the temporary table's data on "No" button press
+				if(i.customId == "button_no_streamer") {dbHelper.deleteTempInfo(interaction.client, interaction.guildId, streamerUsername);}
+				else if(i.customId == "button_no_manga") {interaction.client.mangatemp.delete(interaction.guildId);}
+			}
+			
 		});
+		
 		collector.on(`end`, collected => {
 			if(collected.size == 0) {
 				interaction.client.guildSet.delete(interaction.guildId);
-				interaction.editReply({components: []});
-				if(customId != "unfollow") {interaction.client.mapChangesToBe.delete(interaction.guildId);}
+				if(cType == ComponentType.StringSelect) {
+					interaction.editReply({components: []});
+					if(customId != "unfollow") {interaction.client.mapChangesToBe.delete(interaction.guildId);}
+				} else if (cType == ComponentType.Button){
+					if(customId == `follow`){dbHelper.deleteTempInfo(interaction.client, interaction.guildId, streamerUsername);}
+					else if(customId == "button_no_manga") {interaction.client.mangatemp.delete(interaction.guildId);}
+					
+					actionRow.components[0].setDisabled(true);
+					actionRow.components[1].setDisabled(true);
+					interaction.editReply({ephemeral: true, embeds: [embedToSend], components: [actionRow]});
+				}
+				
 			}	
 		});
 	} catch (error) {console.log(error);}
@@ -165,4 +219,76 @@ async function startCollector(interaction, customId, messageSent){
 //Shortcut
 function copy(embedToCopy) {
 	return EmbedBuilder.from(embedToCopy);
+}
+
+function createFollowingMangaEmbed(mgs_te, guildName, guildIcon) {
+	const embeddedMessage = new EmbedBuilder()
+		.setColor(`#474354`)
+		.setTitle(`Manga that ${guildName} is following`);
+		
+		if(guildIcon != null) {
+			embeddedMessage.setThumbnail(`${guildIcon}`);
+		}
+		
+		if(!mgs_te || mgs_te.numManga == 0) {
+			embeddedMessage.setDescription(`You are not following any manga.`);
+		} else {
+			let valueMessage;
+			embeddedMessage.setDescription(`You are following ${mgs_te.numManga} manga.`);
+			for(const manga of JSON.parse(mgs_te.get(`mangaInfo`))) {
+				valueMessage = manga.channelMessage || `No custom message set.`;
+				valueMessage = `Notifications are sent to <#${manga.channelId}>\nCustom Message: ` + valueMessage;
+				embeddedMessage.addFields({name: manga.title, value: valueMessage});
+			}
+		}
+
+		return embeddedMessage;
+}
+
+function createNewMangaEmbed(title, url, image, diff, chapters){
+	const embeddedMessage = new EmbedBuilder()
+		.setColor(`#474354`)
+		.setTitle(`${title} update!`)
+		.setURL(url)
+		.setThumbnail(image)
+		.setTimestamp();
+	if(diff > 0) {
+		embeddedMessage.setDescription(`${diff} chapters were added.`);
+		let chString = dtString = '', chTitle = 'Latest Chapter';
+		for(const chapter of chapters) {
+			chString += `[${chapter[0]}](${url}${chapter[1]})\n`;
+			dtString += `${chapter[2]}\n`;
+		}
+		if(chapters.length > 1){chTitle += 's';}
+		embeddedMessage.addFields({name: chTitle, value: chString, inline: true}, {name: `Date Released`, value: dtString, inline: true});
+	} else {
+		embeddedMessage.setDescription(`${diff} chapters were removed. Duplicates/fake chapters removed?`);
+	}
+
+	return embeddedMessage;
+}
+
+function createMangaSeriesInfo(info){
+	const embeddedMessage = new EmbedBuilder()
+		.setColor(`#474354`)
+		.setTitle(info.title)
+		.setThumbnail(info.imageUrl)
+		.setTimestamp();
+	let url = `https://${info.domain}/`;
+	if(info.pathPrefix.length > 0){url += `${info.pathPrefix}/`;}
+	url += `${info.identifier}/`;
+	embeddedMessage.setURL(url);
+	const chapters = JSON.parse(info.chapters);
+	const firstNChapters = chapters.slice(0, Math.min(chapters.length, 5));
+
+	let chString = dtString = '', chTitle = 'Latest Chapter';
+	for(const chapter of firstNChapters) {
+		chString += `[${chapter[0]}](${url}${chapter[1]})\n`;
+		dtString += `${chapter[2]}\n`;
+	}
+	if(chapters.length > 1){chTitle += 's';}
+	embeddedMessage.setDescription(`Number of chapters: ${info.numChapters}`);
+	embeddedMessage.addFields({name: chTitle, value: chString, inline: true}, {name: `Date Released`, value: dtString, inline: true});
+
+	return embeddedMessage;
 }
