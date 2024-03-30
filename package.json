@@ -1,6 +1,6 @@
 {
   "name": "tegglebot",
-  "version": "1.5.2",
+  "version": "2.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node deploy-commands.js && node index.js"
@@ -16,9 +16,12 @@
     "@twurple/api": "^7.0.1",
     "@twurple/auth": "^7.0.1",
     "@twurple/eventsub-http": "^7.0.1",
+    "axios": "^1.6.7",
     "discord-api-types": "^0.37.55",
     "discord.js": "^14.13.0",
     "dotenv": "^16.3.1",
+    "node-html-parser": "^6.1.12",
+    "node-schedule": "^2.1.1",
     "sequelize": "^6.32.1",
     "sqlite3": "^5.1.6"
   },

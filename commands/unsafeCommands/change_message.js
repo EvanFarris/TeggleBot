@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, InteractionType} = require('discord.js');
+const {SlashCommandBuilder, InteractionType, ComponentType} = require('discord.js');
 const embedHelper = require(`../../helperFiles/embed_functions.js`);
 const dbHelper = require(`../../helperFiles/database_functions.js`);
 const validationHelper = require(`../../helperFiles/validation_functions.js`);
@@ -25,27 +25,35 @@ module.exports = {
 			
 			interaction.client.mapChangesToBe.set(interaction.guildId, customMessage);
 			let messageSent = await interaction.reply({content: firstResponseMessage, ephemeral: true, components: [selectMenu]});
-			embedHelper.startCollector(interaction, `change_message`, messageSent);
+			embedHelper.startCollector(interaction, `change_message`, messageSent, ComponentType.StringSelect);
 		} else if (interaction.isStringSelectMenu()){
 			const selectedValue = interaction.values[0];
 			const customMessage = interaction.client.mapChangesToBe.get(interaction.guildId);
 			interaction.client.mapChangesToBe.delete(interaction.guildId);
-			if(selectedValue == `none`) {return interaction.update({components: []});}
+			if(selectedValue == `-1`) {return interaction.update({components: []});}
+			
+			const split = selectedValue.split(`|`);
+			if(split[split.length - 1] == "streamer") {
+				//Separate the chosen option into the four required information, use it to get the table information.
+				const {streamerUsername, website, streamerId, channelId} = embedHelper.decomposeSelected(selectedValue);
+				const {streamerAsJSON, gs_tableEntry} = await getFromDbs(interaction, streamerUsername, website);
+				let result = null;
+				if(streamerAsJSON) {
+					result = await dbHelper.updateProperty(interaction.client, gs_tableEntry, streamerAsJSON, interaction.guildId, channelId, streamerId, `message`, customMessage);
+				}
+				let description;
+				if(result) {
+					description = `Message changed successfully.`;
+				} else {
+					description = `Message did not change successfully.`;
+				}
+				interaction.reply({embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
+			} else if(split[split.length - 1] == "manga") {
 
-			//Separate the chosen option into the four required information, use it to get the table information.
-			const {streamerUsername, website, streamerId, channelId} = embedHelper.decomposeSelected(selectedValue);
-			const {streamerAsJSON, gs_tableEntry} = await getFromDbs(interaction, streamerUsername, website);
-			let result = null;
-			if(streamerAsJSON) {
-				result = await dbHelper.updateProperty(interaction.client, gs_tableEntry, streamerAsJSON, interaction.guildId, channelId, streamerId, `message`, customMessage);
-			}
-			let description;
-			if(result) {
-				description = `Message changed successfully.`;
 			} else {
-				description = `Message did not change successfully.`;
+				interaction.reply(`Unknown type returned.`);
 			}
-			interaction.reply({embeds: [embedHelper.createEmbed(embeddedTitle, description)]});
+			
 		}
 	},
 	

@@ -32,7 +32,7 @@ module.exports = {
 		} else {
 			if(interaction.client.commands.has(interaction.customId)) {
 				interaction.client.commands.get(interaction.customId).execute(interaction);
-			} else if(interaction.customId == `button_no`) {
+			} else if(interaction.customId.substring(0,9) == `button_no`) {
 				interaction.update({ephemeral: true});
 			}
 		}

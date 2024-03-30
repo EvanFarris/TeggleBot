@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, InteractionType, ChannelType} = require('discord.js');
+const {SlashCommandBuilder, InteractionType, ChannelType, ComponentType} = require('discord.js');
 
 const embeddedTitle = `Follow Results`;
 const embedHelper = require('../../helperFiles/embed_functions.js');
@@ -11,7 +11,7 @@ module.exports = {
 		.setDescription('Follow a streamer.')
 		.addStringOption(option =>
 			option.setName('url')
-			.setDescription('The url to the streamer you want to subscribe to.')
+			.setDescription('The url to the streamer you want to follow.')
 			.setRequired(true))
 		.addChannelOption(option =>
 			option.setName(`disc_channel`)
@@ -50,7 +50,13 @@ module.exports = {
 			await dbHelper.addTempInfo(interaction.client, interaction.guildId, channel.id, streamerId, streamerUsername, streamerDisplayName, customMessage, customImage);	
 			
 			//Create the embed and ask the guild if the streamer is the right one.
-			const { actionRow, embedToSend } = await embedHelper.createEmbedWithButtons(interaction, streamerUsername, streamerDisplayName, website, streamerDescription, streamerIcon);	
+			const streamerInfo = {
+				username: streamerUsername,
+				displayname: streamerDisplayName,
+				description: streamerDescription,
+				icon: streamerIcon
+			}
+			const { actionRow, embedToSend } = await embedHelper.createEmbedWithButtons(interaction, streamerInfo, `follow`, `button_no_streamer`);	
 			await askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername, actionRow, embedToSend);
 		} else if (interaction.isButton()) {
 			//This is where the code returns to if the user clicks the yes button.
@@ -108,29 +114,6 @@ async function askGuildIfThisIsTheCorrectStreamer(interaction, streamerUsername,
 	try {
 		messageSent = await interaction.reply({ ephemeral: true, embeds: [embedToSend], components: [actionRow] });
 	} catch (error) {console.log(error);}
-			
-	const filter = i => i.customId == "follow" || i.customId == "button_no";
-	const collector = messageSent.createMessageComponentCollector({ filter, time: 15000 });
-				
-	try {
-		collector.on(`collect`, i => {
-			interaction.client.guildSet.delete(interaction.guildId);
-			actionRow.components[0].setDisabled(true);
-			actionRow.components[1].setDisabled(true);
-			interaction.editReply({ephemeral: true, embeds: [embedToSend], components: [actionRow]});
-
-			//Clean up the temporary table's data on "No" button press
-			if(i.customId == "button_no") {dbHelper.deleteTempInfo(interaction.client, interaction.guildId, streamerUsername);}
-		});
-
-		collector.on(`end`, collected => {
-			if(collected.size == 0) {
-				interaction.client.guildSet.delete(interaction.guildId);
-				dbHelper.deleteTempInfo(interaction.client, interaction.guildId, streamerUsername);
-				actionRow.components[0].setDisabled(true);
-				actionRow.components[1].setDisabled(true);
-				interaction.editReply({ephemeral: true, embeds: [embedToSend], components: [actionRow]});
-			}
-		});
-	} catch (error) {}
+	
+	await embedHelper.startCollector(interaction, `follow`, messageSent, ComponentType.Button, dbHelper, actionRow, embedToSend, streamerUsername);
 }

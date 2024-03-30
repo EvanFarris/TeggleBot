@@ -9,10 +9,24 @@ module.exports = {
 	deleteFollowerFromTwitchStreamer,
 	deleteTempInfo,
 	getGuildSubsTableEntry,
+	getMangaGuildSubsTableEntry,
 	checkGuildSubs,
 	getTempInfo,
 	loadPreviousSubscriptions,
-	updateProperty
+	updateProperty,
+	addMangaDomain,
+	loadPreviousManga,
+	checkLocalMangaSeries,
+	addUserToMangaSeries,
+	createMangaSeries,
+	createMangaGuildSubsTableEntry,
+	addMangaToMGS,
+	mangaPreChecks,
+	deleteFollowerFromMangaGuildSubs,
+	deleteFollowerFromMangaSeries,
+	getFromMangaDbs,
+	loadExemptGuilds,
+	addExemptGuild,
 }
 
 //Exported Functions
@@ -68,9 +82,12 @@ async function deleteTempInfo(client, guildId, streamerUsername) {
 	}
 }
 
-async function getGuildSubsTableEntry(client, guildId) {
+async function getGuildSubsTableEntry(client, guildId, gType = "streamer") {
 	try {
-		gs_tableEntry = await client.dbs.guildsubs.findOne({ where: { guildId: `${guildId}` }});
+		let gs_tableEntry;
+		if(gType == `streamer`){gs_tableEntry = await client.dbs.guildsubs.findOne({ where: { guildId: `${guildId}` }});}
+		else if (gType == `manga`) {gs_tableEntry = await client.dbs.mangaguildsubs.findOne({ where: { guildId: `${guildId}` }});}
+		else {gs_tableEntry = null;}
 		return gs_tableEntry;
 	} catch (error) {
 		console.log(`~~~~getGuildSubsTableEntry~~~~\n${error}\n`);
@@ -527,7 +544,7 @@ async function streamerWentOffline(client, streamerId) {
 }
 
 async function getStream(client, streamerId) {
-	const liveStream = await client.twitchAPI.streams.getStreamByUserId(streamerId);;
+	const liveStream = await client.twitchAPI.streams.getStreamByUserId(streamerId);
 
 	return liveStream;
 }
@@ -635,4 +652,254 @@ async function verifyAndUpdateVODsDuration(client, streamerId, streamIds, vodLin
 	vodLinks = vodLinks.join();
 	durations = durations.join();
 	return {streamIds, vodLinks, durations};
+}
+
+//Manga tracking functions
+async function loadPreviousManga(client) {
+	//Load domains
+	let rows = await client.dbs.mangadomains.findAll();
+	let domain, obj;
+	for(i = 0; i < rows.length; i++) {
+		obj = rows.at(i);
+		domain = obj.get("domain");
+
+		client.domains.add(domain);
+	}
+
+	//Load Manga Series info
+
+}
+
+async function addMangaDomain(interaction, domain) {
+	try {
+		await interaction.client.dbs.mangadomains.create({
+			domain: domain
+		});
+		interaction.client.domains.add(domain);
+		interaction.reply(`Domain added: ${domain}`);
+	} catch (err) {
+		console.log(`Error adding the domain to the database`)
+	}
+}
+
+async function deleteMangaDomain(interaction, domain) {
+	try {
+		const dbRow = await interaction.client.dbs.mangadomains.findOne({where: {domain: domain}});
+		if(dbRow){await dbRow.destroy();}
+		interaction.reply(`Domain deleted: ${domain}`);
+	} catch (err) {
+		console.log(`Error deleting the domain: ${domain}`);
+	}
+}
+
+async function createMangaSeries(interaction, info) {
+	try {
+		const {domain, pathPrefix, identifier} = breakdownURL(info.url);
+		const dbRow = await interaction.client.dbs.mangaseries.create({
+			title: 			info.title,
+			imageUrl: 		info.image,
+			chapters: 		JSON.stringify(info.chapters),
+			numChapters: 	info.chapters.length,
+			domain: 		domain,
+			pathPrefix: 	pathPrefix,
+			identifier: 	identifier,
+			guildsJSON: 	JSON.stringify([{guildId: interaction.guildId, channelId: info.channelId, channelMessage: info.channelMessage}])
+		});
+		
+		return dbRow;
+	} catch(error) {
+		console.log(`Error adding series to database: ${error}`);
+		return null;
+	}
+	
+}
+
+async function addUserToMangaSeries(interaction, dbRow, info){
+	try{
+		let success = false;
+		const {domain, pathPrefix, identifier} = breakdownURL(info.url);
+		if(dbRow) {
+			const guilds = JSON.parse(dbRow.get(`guildsJSON`));
+			guilds.push({guildId: info.guildId, channelId: info.channelId, channelMessage: info.channelMessage});
+			return await dbRow.update({guildsJSON: JSON.stringify(guilds)});
+		} 
+		return dbRow;
+	} catch(error) {
+		console.log(`Error adding guild to the existing manga series: ${error}}`);
+		return null;
+	}
+}
+
+async function deleteMangaSeries(interaction, domain, identifier, guildId) {
+	try {
+		const dbRow = await interaction.client.dbs.mangaSeries.findOne({where: {domain: domain, identifier: identifier}});
+		if(dbRow) {
+
+		}
+	} catch (error) {
+		console.log(`Error deleting a manga series: ${error}`)
+	}
+}
+
+async function checkLocalMangaSeries(interaction, [domain, identifier]) {
+	try {
+		const dbRow = await interaction.client.dbs.mangaseries.findOne({where: {domain: domain, identifier: identifier}});
+
+		return dbRow;
+	} catch(err) {
+		console.log(`Error in checkLocalMangaSeries: ${err}`);
+	}
+}
+
+function breakdownURL(url){
+	let url_parts = url.split(/\/+/);
+	//Identifier will be the last subdirectory
+	const identifier = url_parts.pop();
+	//Pop off https if it's there
+	if(/https?:/.test(url_parts[0])){url_parts.shift();}
+
+	const domain = url_parts.shift();
+	const pathPrefix = url_parts.join('/');
+	return {domain, pathPrefix, identifier};
+}
+
+async function getMangaGuildSubsTableEntry(interaction) {
+	try {
+		return await interaction.client.dbs.mangaguildsubs.findOne({where: {guildId: interaction.guildId}});
+	} catch(error) {
+		console.log(`Error getting Manga Guild Subs Entry : ${error}`);
+	}
+}
+
+async function createMangaGuildSubsTableEntry(interaction, info) {
+	try {
+		const dbRow = await interaction.client.dbs.mangaguildsubs.create({
+			guildId: interaction.guildId,
+			mangaInfo: JSON.stringify([{channelId: info.channelId, channelMessage: info.channelMessage, domain: info.domain, title: info.title, identifier: info.identifier}]),
+			numManga: 1
+		});
+		return dbRow;
+	} catch (error) {
+		console.log(`Error creating manga guild subs: ${error}`);
+	}
+}
+
+async function addMangaToMGS(interaction, info, dbRow) {
+	try {
+		const manga = JSON.parse(dbRow.get(`mangaInfo`));
+		const numManga = dbRow.get(`numManga`) + 1;
+		manga.push({channelId: info.channelId, channelMessage: info.channelMessage, domain: info.domain, title: info.title, identifier: info.identifier});
+		return await dbRow.update({mangaInfo: JSON.stringify(manga), numManga: numManga});
+	} catch (error) {
+		console.log(`Error adding manga to manga guild subs: ${error}`);
+	}
+}
+
+async function mangaPreChecks(interaction, [domain, identifier], url) {
+	const firstCheck = validateURL(interaction, url);
+	if(firstCheck) {
+		const dbRow = await interaction.client.dbs.mangaguildsubs.findOne({where: {guildId: interaction.guildId}});
+		const secondCheck = !alreadyFollowingManga(interaction, dbRow, domain, identifier);
+		if(secondCheck){
+			const thirdCheck = canFollowMoreManga(interaction, dbRow);
+			if(thirdCheck){return true;}
+		}
+	}
+	interaction.client.guildSet.delete(interaction.guildId);
+	return false;
+}
+
+function alreadyFollowingManga(interaction, dbRow, domain, identifier) {
+	if(dbRow == null) {return false;}
+	const mangaList = JSON.parse(dbRow.get(`mangaInfo`));
+	for(const manga of mangaList) {
+		if(manga.domain == domain && manga.identifier == identifier){
+			interaction.reply(`Guild is already following that manga.`)
+			return true;
+		}
+	}
+	return false;
+}
+
+function canFollowMoreManga(interaction, dbRow) {
+	if(dbRow == null) {return true;}
+	const mangaList = JSON.parse(dbRow.get(`mangaInfo`));
+	//TODO: allow certain guilds to ignore limit.
+	if(mangaList.length >= maxSubscribedTo && !interaction.client.exemptGuilds.has(interaction.guildId)) {
+		interaction.reply(`Guild cannot follow more manga.`)
+		return false;
+	}
+	return true; 
+}
+
+function validateURL(interaction, url){
+	let url_parts = url.split(/\/+/);
+	if (url_parts.length < 2 || (url_parts.length == 2 && url_parts[0].match(/^https?:$/)) || (url_parts.length == 3 && url_parts[2] == '') ){
+		interaction.reply("Error: Invalid url submitted.");
+		return false;
+	}
+	let domain_index = 0;
+	if(url_parts[domain_index].match(/^https?:$/)){domain_index = 1;}
+	if(interaction.client.domains.has(url_parts[domain_index])){return true;}
+	interaction.reply('Error: Invalid url or domain not supported. ');
+	return false;
+}
+
+async function deleteFollowerFromMangaGuildSubs(mgs_te, position) {
+	if(!mgs_te){return true;}
+	const mangaList = JSON.parse(mgs_te.get(`mangaInfo`));
+	mangaList.splice(position, 1);
+	try {
+		if(mangaList.length == 0) {
+			await mgs_te.destroy();
+			return true;
+		} else {
+			await mgs_te.update({mangaInfo: JSON.stringify(mangaList)});
+			return true;
+		}
+	} catch(err) {
+		return false;
+	}
+	
+}
+
+async function deleteFollowerFromMangaSeries(dbTable, guildId, domain, identifier) {
+	const dbRow = await dbTable.findOne({where: {domain: domain, identifier: identifier}});
+	if(dbRow) {
+		const guilds = JSON.parse(dbRow.get(`guildsJSON`));
+		for (let i = 0; i < guilds.length; i++) {
+			if(guilds[i].guildId == guildId) {
+				guilds.splice(i, 1);
+				break;
+			}
+		}
+		try {
+			if(guilds.length == 0){
+				await dbRow.destroy();
+				return true;
+			} else {
+				await dbRow.update({guildsJSON: JSON.stringify(guilds)});
+				return true;
+			}
+		} catch(err) {return false;}
+	} else {
+		return true;
+	}
+}
+
+async function getFromMangaDbs(interaction, option){
+	const mgs_te = await getMangaGuildSubsTableEntry(interaction);
+	const mangaList = JSON.parse(mgs_te.get("mangaInfo"));
+	const domain = mangaList[option].domain, identifier = mangaList[option].identifier, title = mangaList[option].title;
+	return {mgs_te: mgs_te, title: title, domain: domain, identifier: identifier};
+}
+
+async function loadExemptGuilds(client){
+	const exemptRows = await client.dbs.exemptguilds.findAll();
+	for(const guildRow of exemptRows) {client.exemptGuilds.add(guildRow.guildId);}
+}
+
+async function addExemptGuild(client, guildId) {
+	const numChanged = await client.dbs.exemptguilds.create({guildId: guildId});
+	return numChanged ? true : false;
 }
