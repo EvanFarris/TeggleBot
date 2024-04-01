@@ -11,7 +11,6 @@ module.exports = {
 			.setRequired(true)),
 	async execute(interaction) {
 		const url_parts = interaction.options.getString(`domain_name`).toLowerCase().split(/\/+/);
-		console.log(url_parts);
 		if (url_parts.length < 2){
 			interaction.reply("Error: Invalid url submitted.");
 			return;

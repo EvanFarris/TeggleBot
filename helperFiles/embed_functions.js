@@ -52,7 +52,7 @@ async function createLiveStreamEmbed(streamEvent, streamerIcon, liveStream, vod)
 }
 
 //Creates a select menu with a customId for interactionCreate to handle and route to the right command.
-function getSelectMenu(gs_tableEntry, customId, gType = "streamer") {
+function getSelectMenu(gs_tableEntry, customId, gType = "streamer", startIndex = 0) {
 	let selectMenuOptions = new StringSelectMenuBuilder()
 			.setCustomId(customId)
 			.setPlaceholder(`Nothing Selected`);
@@ -74,13 +74,16 @@ function getSelectMenu(gs_tableEntry, customId, gType = "streamer") {
 		}
 	} else if(gType == "manga") {
 		let mangaList = JSON.parse(gs_tableEntry.get(`mangaInfo`));
-		for(let i = 0; i < mangaList.length; i++) {
+		for(let i = 0; i < Math.min(23, mangaList.length - startIndex); i++) {
 			selectMenuOptions.addOptions(
 			{
-				label: mangaList[i].title,
-				value: `${i.toString()}|${gType}`
+				label: mangaList[i + startIndex].title,
+				value: `${(i + startIndex).toString()}|${gType}`
 			});
 		}
+		
+		if(startIndex + 23 < mangaList.length){selectMenuOptions.addOptions({label: `Next Page`, value: `-${startIndex + 23}`});}
+		else if(startIndex + 23 == mangaList.length){selectMenuOptions.addOptions({label: mangaList[startIndex+23].title, value: `${(startIndex + 23).toString()}|${gType}`});}
 	} else {
 		return null;
 	}

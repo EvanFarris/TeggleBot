@@ -22,7 +22,7 @@ module.exports = {
 			}
 
 			//Create the select menu to display
-			let selectMenu = embedHelper.getSelectMenu(gs_tableEntry, commandName, gType);
+			let selectMenu = embedHelper.getSelectMenu(gs_tableEntry, commandName, gType, 0);
 			let messageSent = await interaction.reply({content: `Choose an option `, ephemeral: true, components: [selectMenu] });
 			embedHelper.startCollector(interaction, commandName, messageSent, ComponentType.StringSelect);
 		} else if(interaction.isStringSelectMenu()) {
@@ -32,18 +32,26 @@ module.exports = {
 				interaction.client.guildSet.delete(interaction.guildId);
 				return interaction.update({components: []});
 			}
+			
+			if(selectedValue > 0){
+				const {domain, identifier} = await dbHelper.getFromMangaDbs(interaction, parseInt(selectedValue));
+				const manga_row = await dbHelper.checkLocalMangaSeries(interaction, [domain, identifier]);
+				interaction.client.guildSet.delete(interaction.guildId);
+				if(!manga_row){return interaction.reply(`Manga series somehow doesn't exist?`);}
 
-			const {domain, identifier} = await dbHelper.getFromMangaDbs(interaction, parseInt(selectedValue));
-			const manga_row = await dbHelper.checkLocalMangaSeries(interaction, [domain, identifier]);
-			interaction.client.guildSet.delete(interaction.guildId);
-			if(!manga_row){return interaction.reply(`Manga series somehow doesn't exist?`);}
-
-			const emb = embedHelper.createMangaSeriesInfo(manga_row);
-			try{
-				interaction.reply({embeds: [emb]});
-			} catch(err){
-				console.log(err);
+				const emb = embedHelper.createMangaSeriesInfo(manga_row);
+				try{
+					interaction.reply({embeds: [emb]});
+				} catch(err){
+					console.log(err);
+				}
+			} else {
+				//Create the select menu to display
+				const selectMenu = embedHelper.getSelectMenu(gs_tableEntry, commandName, gType, (parseInt(selectedValue) * -1));
+				const messageSent = await interaction.editReply({content: `Choose an option `, ephemeral: true, components: [selectMenu] });
+				embedHelper.startCollector(interaction, commandName, messageSent, ComponentType.StringSelect);
 			}
+			
 		}
 	},
 };
