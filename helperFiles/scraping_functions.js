@@ -13,7 +13,7 @@ async function refreshMangaDB(client) {
 	for(const manga of allManga) {
 		url = `https://${manga.domain}/`;
 		if(manga.pathPrefix.length > 0){url += `${manga.pathPrefix}/`;}
-		url += `${manga.identifier}`;
+		url += `${manga.identifier}/`;
 		const {title, image: newImage, chapters: newChapters} = await scrapeAndProcessURL(null, url);
 		let channel, content;
 		if(manga.numChapters != newChapters.length){
