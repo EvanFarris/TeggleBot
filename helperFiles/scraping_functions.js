@@ -2,9 +2,9 @@ const { parse } = require('node-html-parser');
 const embedHelper = require('./embed_functions.js');
 const axios  = require('axios');
 module.exports = {
-	scrapeAndProcessURL,
+	jobTester,
 	refreshMangaDB,
-	jobTester
+	scrapeAndProcessURL,
 }
 
 async function refreshMangaDB(client) {

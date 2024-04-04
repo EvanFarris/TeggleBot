@@ -1,17 +1,17 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ComponentType  } = require('discord.js');
 const embeddedTitle = `TeggleBot Subscribe Results`;
 module.exports = {
+	copy,
 	createEmbed,
-	createLiveStreamEmbed,
-	getSelectMenu,
-	decomposeSelected,
 	createEmbedWithButtons,
 	createFollowingEmbed,
-	startCollector,
-	copy,
 	createFollowingMangaEmbed,
-	createNewMangaEmbed,
+	createLiveStreamEmbed,
 	createMangaSeriesInfo,
+	createNewMangaEmbed,
+	decomposeSelected,
+	getSelectMenu,
+	startCollector,
 }
 
 //Basic embed
