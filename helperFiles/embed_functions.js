@@ -256,7 +256,9 @@ function createNewMangaEmbed(title, url, image, diff, chapters){
 		.setThumbnail(image)
 		.setTimestamp();
 	if(diff > 0) {
-		embeddedMessage.setDescription(`${diff} chapters were added.`);
+		let desc = `${diff} chapter`;
+		desc += diff > 1 ? `s were added.` : ` was added.`;
+		embeddedMessage.setDescription(desc);
 		let chString = dtString = '', chTitle = 'Latest Chapter';
 		for(const chapter of chapters) {
 			chString += `[${chapter[0]}](${url}${chapter[1]})\n`;
