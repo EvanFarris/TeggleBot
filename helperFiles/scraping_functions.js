@@ -74,7 +74,7 @@ function processHTTP(interaction, data) {
 	let title = parsed.querySelector(`h1`);
 	if(title){title = title.childNodes[0]._rawText;}
 	else {
-		if(interaction){interaction.reply(`Url given does not lead to a page with series information`);}
+		if(interaction){interaction.reply(`Url given does not lead to a page with series information.`);}
 		else{console.log(`Url given does not lead to a page with series information`);}
 		return null;
 	}
@@ -87,11 +87,14 @@ function processHTTP(interaction, data) {
 	//Extract the chapters
 	let chapter_list = parsed.querySelector(`ul.row-content-chapter`);
 
+	//return Array of Arrays which holds chapter data
 	let chapters = [];
+	let chapters_set = new Set();
 	let link, link_parts, chapter_name, date;
-	//Populate chapters from two different html layouts have been found for series pages.
+	//Populate chapters array depending on html structure, or reply to interaction/console if it doesnt find any list of chapters..
 	if(chapter_list) {	
 		chapter_list = chapter_list.querySelectorAll('li');
+		//Separate the list items into an array of strings containing chapter data
 		for (const li of chapter_list) {
 			link  			= li.querySelector('a.chapter-name.text-nowrap').getAttribute('href');
 			chapter_name 	= li.querySelector('a.chapter-name.text-nowrap').childNodes[0]._rawText;
@@ -101,9 +104,15 @@ function processHTTP(interaction, data) {
 				link_parts 	= link.split(/\/+/);
 				link 		= link_parts[link_parts.length - 1];
 			}
+			
+			//Removes HH:MM from string if uploaded on a previous date.
 			if(date && /^\D/.test(date)){date = date.substring(0, date.length - 6);}
 			
-			chapters.push([chapter_name, link, date]);
+			//Stops duplicate links from being added, ensures only chapters with links are added to array.
+			if(link && !chapters_set.has(link)){
+				chapters.push([chapter_name, link, date]);
+				chapters_set.add(link);
+			}
 		}
 	} else if(parsed.querySelectorAll('div.chapter-list > div.row').length){
 		chapter_list = parsed.querySelectorAll('div.chapter-list > div.row');
@@ -118,13 +127,18 @@ function processHTTP(interaction, data) {
 				link_parts 	= link.split(/\/+/);
 				link 		= link_parts[link_parts.length - 1];
 			}
+			
 			if(chapter_name){chapter_name = chapter_name.childNodes[0]._rawText;}
+			
 			if(date){
 				date 		= date.getAttribute('title')
 				if(/^\D/.test(date)){date = date.substring(0, date.length - 6);}
 			}
 
-			chapters.push([chapter_name, link, date]);
+			if(link && !chapters_set.has(link)){
+				chapters.push([chapter_name, link, date]);
+				chapters_set.add(link);
+			}
 		}
 	} else {
 		if(interaction){interaction.reply('Series has either no chapters out, or an unexpected html structure. Message bot maintainer if there are chapters.');}

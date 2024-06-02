@@ -251,23 +251,31 @@ function createFollowingMangaEmbed(mgs_te, guildName, guildIcon) {
 function createNewMangaEmbed(title, url, image, diff, chapters){
 	const embeddedMessage = new EmbedBuilder()
 		.setColor(`#474354`)
-		.setTitle(`${title} update!`)
+		.setTitle(`${title.substring(0,256)}`)
 		.setURL(url)
 		.setThumbnail(image)
 		.setTimestamp();
 	if(diff > 0) {
 		let desc = `${diff} chapter`;
-		desc += diff > 1 ? `s were added.` : ` was added.`;
+		desc += (diff > 1 ? `s were added.` : ` was added.`);
 		embeddedMessage.setDescription(desc);
-		let chString = dtString = '', chTitle = 'Latest Chapter';
+		let cVal = dVal = cTemp = dTemp= '', chTitle = 'Latest Chapter', dtTitle = `Date Added`;
 		for(const chapter of chapters) {
-			chString += `[${chapter[0]}](${url}${chapter[1]})\n`;
-			dtString += `${chapter[2]}\n`;
+			cTemp = `[${chapter[0]}](${url}${chapter[1]})\n`;
+			dTemp = `${chapter[2]}\n`
+			//Discord API char limit for fields
+			if((cTemp.length + cVal.length > 1024) || (dTemp.length + dVal.length > 1024)){break;}
+			cVal += cTemp;
+			dVal += dTemp;
 		}
 		if(chapters.length > 1){chTitle += 's';}
-		embeddedMessage.addFields({name: chTitle, value: chString, inline: true}, {name: `Date Released`, value: dtString, inline: true});
+		embeddedMessage.addFields({name: chTitle, value: chString, inline: true}, {name: dtTitle, value: dtString, inline: true});
 	} else {
-		embeddedMessage.setDescription(`${diff} chapters were removed. Duplicates/fake chapters removed?`);
+		let desc = `${diff * -1} chapter`;
+		if(diff * -1 > 1){desc += `s were removed.`;}
+		else {desc += ` was removed.`};
+
+		embeddedMessage.setDescription(desc);
 	}
 
 	return embeddedMessage;
@@ -284,7 +292,8 @@ function createMangaSeriesInfo(info){
 	url += `${info.identifier}/`;
 	embeddedMessage.setURL(url);
 	const chapters = JSON.parse(info.chapters);
-	const firstNChapters = chapters.slice(0, Math.min(chapters.length, 5));
+	const maxChapters = 5;
+	const firstNChapters = chapters.slice(0, Math.min(chapters.length, maxChapters));
 
 	let chString = dtString = '', chTitle = 'Latest Chapter';
 	for(const chapter of firstNChapters) {
