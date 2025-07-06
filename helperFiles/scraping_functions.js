@@ -1,10 +1,13 @@
 const { parse } = require('node-html-parser');
 const embedHelper = require('./embed_functions.js');
 const axios  = require('axios');
+
 module.exports = {
 	jobTester,
 	refreshMangaDB,
 	scrapeAndProcessURL,
+	sendRedditMessages,
+	getNewRedditToken,
 }
 
 async function refreshMangaDB(client) {
@@ -14,7 +17,13 @@ async function refreshMangaDB(client) {
 		url = `https://${manga.domain}/`;
 		if(manga.pathPrefix.length > 0){url += `${manga.pathPrefix}/`;}
 		url += `${manga.identifier}/`;
+
 		const {title, image: newImage, chapters: newChapters} = await scrapeAndProcessURL(null, url);
+		if(title == null) {
+			console.log(`url not working - ${url}\n`);
+			continue;
+		}
+
 		let channel, content;
 		if(manga.numChapters != newChapters.length){
 			try{
@@ -29,7 +38,9 @@ async function refreshMangaDB(client) {
 						else {content = ``;}
 						try {
 							messageSent = await channel.send({content: content, embeds: [emb]});
-						} catch(err){}
+						} catch(err){
+							console.log(err);
+						}
 					}
 				}
 			
@@ -144,10 +155,49 @@ function processHTTP(interaction, data) {
 		if(interaction){interaction.reply('Series has either no chapters out, or an unexpected html structure. Message bot maintainer if there are chapters.');}
 		else{console.log('Series has either no chapters out, or an unexpected html structure. Message bot maintainer if there are chapters.');}
 		
-		return null;
+		return {title: null, image: null, chapters: null};
 	}
 
 	return {title: title, image: image, chapters: chapters};
+}
+
+//Reddit Functions
+async function sendRedditMessages(client) {
+	return;
+	const curTime = Date.now();
+
+	//Refresh API token if it expired
+	if(client.redditInfo.expires <= curTime) {await getNewRedditToken(client);}
+	if(client.redditInfo.token == null) {return console.log(`sendRedditMessages - no token after refresh`);}
+
+	const headers = {
+		'User-Agent': `TeggleBot/${client.tb_version} by ${client.redditInfo.username}`,
+		'Authorization': `bearer ${client.redditInfo.token}`,
+	};
+	const options = {headers: headers};
+
+	let url, guilds;
+	for (const subreddit of allSubreddits) {
+		url = `https://oauth.reddit.com/r/${subreddit.name}`;
+		try {
+			const returnedInfo = (await axios.get(url, options));
+			const posts = processData(returnedInfo);
+			savePosts(client, posts);
+			sendPosts(client, posts, subreddit.guildsJSON);
+		} catch (err) {
+			interaction.reply(`sendRedditMessages - An error occurred\n${err}`);
+		}
+
+		await sleep(1000);
+	}
+}
+
+function processData(interaction, returnedInfo) {
+	const status = returnedInfo.status;
+	if(status < 200 || status > 299) {
+		console.log(`HTTP response status code out of bounds 200-299: ${status}\nStatus text: ${returnedInfo.statusText}`);
+		return null;
+	}
 }
 
 function sleep(ms) {
@@ -160,4 +210,33 @@ function jobTester(client) {
 	const date = new Date();
 	console.log(`Refreshing DB! ${date}`);
 
+}
+
+async function getNewRedditToken(client) {
+	const headers = {
+		'User-Agent': `TeggleBot/${client.tb_version} by ${client.redditInfo.username}`
+	};
+
+	const url = 'https://www.reddit.com/api/v1/access_token';
+	const params = new URLSearchParams({grant_type: `client_credentials`});
+	try{
+		const returnedInfo = (await axios.post(url,{}, {
+			headers: headers,
+			auth: {
+				username: client.redditInfo.id,
+				password: client.redditInfo.secret
+			},
+			params: params
+		}));
+		if(returnedInfo.status >= 200 && returnedInfo.status <= 299){
+			client.redditInfo.token = returnedInfo.data.access_token;
+			client.redditInfo.expires = Date.now() + returnedInfo.expires_in * 1000 - 100;
+			return true;
+		} else {
+			return false;
+		}
+	} catch (err) {
+		console.log(`An error occurred\n${err}`);
+		return false;
+	}
 }

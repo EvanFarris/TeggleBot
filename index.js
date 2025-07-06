@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const fs = require('node:fs');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const { DISCORD_BOT_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString, SEQUELIZE_USER: sq_user, SEQUELIZE_PASS: sq_pass, HOST_NAME: hName , ADAPTER_PORT: adapterPort, PATH_PREFIX: pathPrefix, DB_NAME: dbName, DB_HOST: dbHost, DB_DIALECT: dbDialect, DB_STORAGE: dbStorage, DISCORD_OWNER_ID: ownerId} = process.env;
+const { DISCORD_BOT_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString, SEQUELIZE_USER: sq_user, SEQUELIZE_PASS: sq_pass, HOST_NAME: hName , ADAPTER_PORT: adapterPort, PATH_PREFIX: pathPrefix, DB_NAME: dbName, DB_HOST: dbHost, DB_DIALECT: dbDialect, DB_STORAGE: dbStorage, DISCORD_OWNER_ID: ownerId, REDDIT_API_ID: redditID, REDDIT_API_SECRET: redditSecret, REDDIT_API_TOKEN: redditToken, REDDIT_API_EXPIRES: redditTime, REDDIT_USERNAME: redditName} = process.env;
 
 const Sequelize = require('sequelize');
 
@@ -12,6 +12,7 @@ const { DirectConnectionAdapter, EventSubHttpListener, ReverseProxyAdapter } = r
 
 let forceStream = false;
 let forceManga  = false;
+let forceReddit = false;
 
 const dbHelper = require(`./helperFiles/database_functions.js`);
 const scHelper = require(`./helperFiles/scraping_functions.js`);
@@ -154,6 +155,16 @@ async function main() {
 		}
 	});
 
+	const SUBREDDITS = sequelize.define('subreddits',{
+		name: {
+			type: Sequelize.STRING,
+			unique: true,
+		},
+
+		guildsJSON: Sequelize.TEXT,
+	});
+
+	client.tb_version = "2.1.1";
 	//Attach the database + tables to the discord client so the discord commands can access the related tables.
 	client.dbs = sequelize;
 	client.dbs.guildsubs = GUILD_SUBS;
@@ -164,13 +175,14 @@ async function main() {
 	client.dbs.mangaseries = MANGA_SERIES;
 	client.dbs.mangaguildsubs = MANGA_GUILD_SUBS;
 	client.dbs.exemptguilds = EXEMPT_GUILDS;
+	client.dbs.subreddits = SUBREDDITS;
 	await client.dbs.guildsubs.sync({force: forceStream});
 	await client.dbs.twitchstreamers.sync({force: forceStream});
 	await client.dbs.mangadomains.sync({force: forceManga});
 	await client.dbs.mangaseries.sync({force: forceManga});
 	await client.dbs.mangaguildsubs.sync({force: forceManga});
 	await client.dbs.exemptguilds.sync({force: forceManga && forceStream});
-
+	await client.dbs.subreddits.sync();
 	client.dbs.temp.sync({force: true});
 	client.dbs.streamtemp.sync({force: true});
 
@@ -203,30 +215,61 @@ async function main() {
 	const twitchListener = new EventSubHttpListener({apiClient, adapter: RPAdapter, secret, strictHostCheck: true, legacySecrets: true});
 	client.twitchListener = twitchListener;
 
+	//Add redditInfo to client
+	const redditInfo = {
+		id: redditID,
+		secret: redditSecret,
+		token: redditToken,
+		expires: redditTime,
+		username: redditName,
+	};
+
+	client.redditInfo = redditInfo;
+	await scHelper.getNewRedditToken(client);
+
 	//Start the two listeners.
 	await dbHelper.loadExemptGuilds(client);
 	await dbHelper.loadPreviousSubscriptions(client);
-	await dbHelper.loadPreviousManga(client);
+	await dbHelper.loadPreviousManga(client); 
 	await twitchListener.start();
 	await client.login(discordToken);
 
-	//Start DB update Job
-	const rule = new scheduler.RecurrenceRule();
-	rule.minute = 33;
-	const job = scheduler.scheduleJob(rule, function(){scHelper.refreshMangaDB(client);});
+	console.log(`Scheduling jobs...`);
+	//Start jobs which update every hour.
+	const timeToUpdateRule = new scheduler.RecurrenceRule();
+	timeToUpdateRule.minute = 0;
+	scheduler.scheduleJob(timeToUpdateRule, function(){scHelper.refreshMangaDB(client);});
+	
+	timeToUpdateRule.minute = 20;
+	scheduler.scheduleJob(timeToUpdateRule, function(){scHelper.sendRedditMessages(client);});
+
+	//TODO: Add a job to refresh twitch subscriptions biweekly
+	console.log(`index.js setup finished!!!`);
 }
 
 main();
 
 function checkArgs(){
 	if(process.argv.length > 2){
-		if(process.argv[2] == "--reset-manga"){
-			forceManga = true;
-		} else if(process.argv[2] == "--reset-streamers") {
-			forceStream = true;
-		} else if(process.argv[2] == "--reset-all") {
-			forceManga = true;
-			forceStream = true;
+		for(let i = 2; i < process.argv.length; i++ ){
+			switch(process.argv[i]) {
+				case `--reset-manga`:
+					forceManga = true;
+					break;
+				case `--reset-streamers`:
+					forceStream = true;
+					break;
+				case `--reset-reddit`:
+					forceReddit = true;
+					break;
+				case `--reset-all`:
+					forceManga  = true;
+					forceStream = true;
+					forceReddit = true;
+					break;
+				default:
+					console.log(`HUH - Unknown argument: ${process.argv[i]}`);
+			}
 		}
 	}
 }

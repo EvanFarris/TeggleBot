@@ -269,7 +269,7 @@ function createNewMangaEmbed(title, url, image, diff, chapters){
 			dVal += dTemp;
 		}
 		if(chapters.length > 1){chTitle += 's';}
-		embeddedMessage.addFields({name: chTitle, value: chString, inline: true}, {name: dtTitle, value: dtString, inline: true});
+		embeddedMessage.addFields({name: chTitle, value: cVal, inline: true}, {name: dtTitle, value: dVal, inline: true});
 	} else {
 		let desc = `${diff * -1} chapter`;
 		if(diff * -1 > 1){desc += `s were removed.`;}
