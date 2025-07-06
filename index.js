@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const fs = require('node:fs');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const { DISCORD_BOT_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString, SEQUELIZE_USER: sq_user, SEQUELIZE_PASS: sq_pass, HOST_NAME: hName , ADAPTER_PORT: adapterPort, PATH_PREFIX: pathPrefix, DB_NAME: dbName, DB_HOST: dbHost, DB_DIALECT: dbDialect, DB_STORAGE: dbStorage, DISCORD_OWNER_ID: ownerId, REDDIT_API_ID: redditID, REDDIT_API_SECRET: redditSecret, REDDIT_API_TOKEN: redditToken, REDDIT_API_EXPIRES: redditTime, REDDIT_USERNAME: redditName} = process.env;
+const { DISCORD_BOT_TOKEN: discordToken, TWITCH_CLIENT_ID: twitchClientId, TWITCH_CLIENT_SECRET: twitchClientSecret, TWITCH_ACCESS_TOKEN: listenerString, SEQUELIZE_USER: sq_user, SEQUELIZE_PASS: sq_pass, HOST_NAME: hName , ADAPTER_PORT: adapterPort, PATH_PREFIX: pathPrefix, DB_NAME: dbName, DB_HOST: dbHost, DB_DIALECT: dbDialect, DB_STORAGE: dbStorage, DISCORD_OWNER_ID: ownerId, REDDIT_API_ID: redditID, REDDIT_API_SECRET: redditSecret, REDDIT_API_TOKEN: redditToken, REDDIT_API_EXPIRES: redditTime, REDDIT_USERNAME: redditName, TB_VERSION: tb_version} = process.env;
 
 const Sequelize = require('sequelize');
 
@@ -164,7 +164,7 @@ async function main() {
 		guildsJSON: Sequelize.TEXT,
 	});
 
-	client.tb_version = "2.1.1";
+	client.tb_version = tb_version;
 	//Attach the database + tables to the discord client so the discord commands can access the related tables.
 	client.dbs = sequelize;
 	client.dbs.guildsubs = GUILD_SUBS;
